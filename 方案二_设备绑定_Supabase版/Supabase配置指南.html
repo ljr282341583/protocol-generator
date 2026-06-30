@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supabase 配置指南 - 设备绑定后端</title>
+<style>
+  :root { --primary: #1a3a5c; --accent: #3ecf8e; --success: #27ae60; --danger: #c0392b; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; color: #1e293b; line-height: 1.8; }
+  h1 { color: var(--primary); border-bottom: 3px solid var(--accent); padding-bottom: 10px; }
+  h2 { color: var(--primary); margin-top: 32px; }
+  .step { background: #f8fafc; border-left: 4px solid var(--primary); padding: 16px 20px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+  .step .num { display: inline-block; background: var(--primary); color: #fff; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; margin-right: 10px; font-weight: bold; }
+  .code-block { background: #1e293b; color: #e2e8f0; padding: 16px 20px; border-radius: 8px; font-family: monospace; font-size: 13px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+  .tip { background: #e8f0fe; border: 1px solid #bfdbfe; padding: 12px 16px; border-radius: 8px; margin: 12px 0; }
+  .warn { background: #fef3c7; border: 1px solid #fde68a; padding: 12px 16px; border-radius: 8px; margin: 12px 0; }
+  .checklist { list-style: none; padding: 0; }
+  .checklist li { padding: 8px 0; }
+  .checklist li::before { content: '☐ '; color: var(--accent); font-size: 18px; }
+  .checklist li.done::before { content: '✅ '; }
+</style>
+</head>
+<body>
+<h1>⚡ Supabase 配置指南</h1>
+<p>本指南帮助你完成 Supabase 后端配置，实现<strong>真正的跨设备绑定（一码一设备）</strong>。</p>
+<p style="color:#64748b;font-size:14px;">预计耗时：<strong>10分钟</strong> | 费用：<strong>完全免费</strong>（Supabase 免费版：500MB 数据库、50,000 月活用户）</p>
+
+<div class="warn">
+  <strong>为什么从 CloudBase 切换到 Supabase？</strong><br>
+  CloudBase 免费套餐限制太多：不能添加安全域名（localhost 加不了）、不能使用静态网站托管。<br>
+  Supabase 免费版没有这些限制，开箱即用，而且对前端直接调用非常友好。
+</div>
+
+<h2>📋 配置步骤</h2>
+
+<div class="step">
+  <span class="num">1</span><strong>注册 Supabase 账号</strong>
+  <p>打开 <a href="https://supabase.com" target="_blank">supabase.com</a>，点击右上角「Start your project」。</p>
+  <p>推荐使用 GitHub 账号登录（最方便），也可以用邮箱注册。</p>
+</div>
+
+<div class="step">
+  <span class="num">2</span><strong>创建项目</strong>
+  <p>登录后进入 <a href="https://supabase.com/dashboard/projects" target="_blank">Dashboard</a>，点击「New project」：</p>
+  <ul>
+    <li><strong>Organization</strong>：默认即可</li>
+    <li><strong>Name</strong>：随意填写，如 <code>mediation</code></li>
+    <li><strong>Database Password</strong>：设置一个密码并<strong>记住它</strong>（后面建表要用）</li>
+    <li><strong>Region</strong>：选择 <strong>Northeast Asia (Tokyo)</strong> 或 <strong>Southeast Asia (Singapore)</strong>（离中国近）</li>
+  </ul>
+  <p>点击「Create project」，等待约 <strong>1-2 分钟</strong> 初始化完成。</p>
+</div>
+
+<div class="step">
+  <span class="num">3</span><strong>获取 API 密钥</strong>
+  <p>项目创建完成后，进入项目 Dashboard → 左侧菜单 <strong>「Settings」</strong> → <strong>「API」</strong>。</p>
+  <p>复制以下两个值：</p>
+  <ul>
+    <li><strong>Project URL</strong>（格式：<code>https://xxxxxxxxxxxx.supabase.co</code>）</li>
+    <li><strong>anon public key</strong>（以 <code>eyJ...</code> 开头的一长串字符）</li>
+  </ul>
+  <div class="tip">💡 这两个值先保存到记事本，后面会用到。</div>
+</div>
+
+<div class="step">
+  <span class="num">4</span><strong>创建数据库表</strong>
+  <p>进入左侧菜单 <strong>「SQL Editor」</strong>，点击「New query」，粘贴以下 SQL 并点击「Run」执行：</p>
+  <div class="code-block">-- 创建设备绑定表
+CREATE TABLE IF NOT EXISTS device_bindings (
+  id BIGSERIAL PRIMARY KEY,
+  "codeHash" TEXT NOT NULL,
+  devices JSONB DEFAULT '[]'::jsonb,
+  "maxDevices" INTEGER DEFAULT 1,
+  "activatedAt" TEXT,
+  "updatedAt" TEXT
+);
+
+-- 为 codeHash 创建索引（加快查询）
+CREATE INDEX IF NOT EXISTS idx_device_bindings_codehash ON device_bindings ("codeHash");
+
+-- 开启 RLS（行级安全）
+ALTER TABLE device_bindings ENABLE ROW LEVEL SECURITY;
+
+-- 允许匿名用户读取所有记录（一码一设备的核心）
+CREATE POLICY "anon_can_read" ON device_bindings
+  FOR SELECT TO anon USING (true);
+
+-- 允许匿名用户插入记录
+CREATE POLICY "anon_can_insert" ON device_bindings
+  FOR INSERT TO anon WITH CHECK (true);
+
+-- 允许匿名用户更新记录
+CREATE POLICY "anon_can_update" ON device_bindings
+  FOR UPDATE TO anon USING (true);
+
+-- 允许匿名用户删除记录
+CREATE POLICY "anon_can_delete" ON device_bindings
+  FOR DELETE TO anon USING (true);</div>
+  <div class="tip">💡 一次性粘贴全部 SQL 并执行即可，无需分步操作。</div>
+</div>
+
+<div class="step">
+  <span class="num">5</span><strong>开启匿名登录</strong>
+  <p>左侧菜单 <strong>「Authentication」</strong> → <strong>「Settings」</strong>：</p>
+  <ul>
+    <li>找到 <strong>「Enable anonymous sign-ins」</strong>，打开开关</li>
+    <li>点击页面底部的 <strong>「Save」</strong></li>
+  </ul>
+  <div class="tip">💡 这是关键步骤！不开启匿名登录，前端无法获取设备绑定数据。</div>
+</div>
+
+<div class="step">
+  <span class="num">6</span><strong>更新代码中的密钥</strong>
+  <p>打开以下两个文件，搜索 <code>SUPABASE_CONFIG</code>，替换 URL 和 anonKey：</p>
+  <ul>
+    <li><code>人民调解协议生成器v6.0_方案二_设备绑定.html</code></li>
+    <li><code>管理员面板v2_设备绑定.html</code></li>
+  </ul>
+  <div class="code-block">var SUPABASE_CONFIG = {
+  url: 'https://xxxxxxxxxxxx.supabase.co',  // ← 改成你的 Project URL
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',  // ← 改成你的 anon key
+  enabled: true
+};</div>
+</div>
+
+<div class="step">
+  <span class="num">7</span><strong>验证配置</strong>
+  <p>用浏览器打开主页面（本地文件即可，Supabase 自动支持 localhost），按 F12 → Console 查看：</p>
+  <div class="code-block">[Supabase] 初始化成功，项目: https://xxxxxxxxxxxx.supabase.co</div>
+  <p>✅ 看到这行日志，说明配置成功！</p>
+  <p>❌ 如果看到：</p>
+  <div class="code-block">[Supabase] 初始化失败，回退到 localStorage 模式</div>
+  <p>说明配置有问题，请检查以上步骤。</p>
+</div>
+
+<h2>🔧 常见问题</h2>
+
+<div class="tip">
+  <strong>Q: 提示 "Anonymous sign-ins are disabled"？</strong><br>
+  A: 回到第 5 步，确认匿名登录开关已开启并点击了 Save。
+</div>
+
+<div class="tip">
+  <strong>Q: 数据库写入失败，报 403 或权限错误？</strong><br>
+  A: 检查第 4 步的 SQL 是否全部执行成功。特别是 RLS Policies，可以在左侧菜单「Authentication → Policies」中查看 device_bindings 表是否已有 4 条策略。
+</div>
+
+<div class="tip">
+  <strong>Q: 不想用 Supabase 了怎么办？</strong><br>
+  A: 在代码中将 <code>enabled: true</code> 改为 <code>enabled: false</code>，系统会自动回退到 localStorage 模式（仅限单浏览器）。
+</div>
+
+<div class="tip">
+  <strong>Q: 免费额度够用吗？</strong><br>
+  A: 完全够用。Supabase 免费版提供 500MB 数据库、5GB 带宽、50,000 月活用户。设备绑定数据量极小，几乎不会产生费用。
+</div>
+
+<h2>✅ 配置检查清单</h2>
+<ul class="checklist">
+  <li>注册 Supabase 账号</li>
+  <li>创建项目（选择亚洲地区）</li>
+  <li>获取 Project URL 和 anon key</li>
+  <li>SQL Editor 中建表 + 设置 RLS 策略</li>
+  <li>开启匿名登录</li>
+  <li>更新两个 HTML 文件中的 SUPABASE_CONFIG</li>
+  <li>打开页面验证控制台日志</li>
+</ul>
+
+<h2>🚀 测试跨设备绑定</h2>
+<ol>
+  <li>在<strong>电脑A的Chrome</strong>中打开主页面，输入授权码 → 应显示「设备已绑定（第1/1台）」</li>
+  <li>在<strong>电脑B的Chrome</strong>中打开主页面，输入<strong>同一授权码</strong> → 应显示「该授权码已被其他设备绑定使用」</li>
+  <li>在<strong>管理员面板</strong>中点击「解绑」，然后在电脑B重新输入 → 应成功绑定</li>
+</ol>
+
+<p style="text-align:center;margin-top:40px;color:#94a3b8;font-size:13px;">
+  配置完成后，设备绑定数据将存储在 Supabase 云端，所有设备共享同一份绑定状态。
+</p>
+</body>
+</html>
