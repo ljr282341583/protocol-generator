@@ -276,19 +276,90 @@
   .auth-box .auth-btn:hover { opacity: 0.9; }
   .auth-box .auth-error { color: #c0392b; font-size: 13px; margin-top: 12px; min-height: 20px; }
   .auth-box .auth-hint { font-size: 12px; color: #94a3b8; margin-top: 20px; }
+  .auth-box .auth-input-group { margin-bottom: 14px; }
+  .auth-box .auth-input-group label { display: block; text-align: left; font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 4px; }
+  .auth-box .auth-input-group .auth-input { margin-top: 0; }
+  .auth-box .change-pwd-panel { display: none; }
+  .auth-box .change-pwd-panel.show { display: block; }
+  .auth-box .login-panel.hide { display: none; }
+  .auth-box .auth-link { display: inline-block; margin-top: 16px; font-size: 13px; color: #2c5f8a; text-decoration: underline; cursor: pointer; background: none; border: none; font-family: inherit; }
+  .auth-box .auth-link:hover { color: #1a3a5c; }
+  .auth-box .auth-link.back { margin-top: 12px; }
+
+  /* 个人卷宗弹窗 */
+  .personal-modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); z-index: 10000;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .personal-modal-overlay.hidden { display: none; }
+  .personal-modal {
+    background: #fff; border-radius: 12px; width: 95%; max-width: 900px;
+    max-height: 90vh; display: flex; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .personal-modal-header {
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .personal-modal-header h3 { margin: 0; font-size: 18px; color: var(--primary); }
+  .personal-modal-body {
+    padding: 24px; overflow-y: auto; flex: 1;
+  }
+  .personal-modal-footer {
+    padding: 16px 24px; border-top: 1px solid var(--border);
+    display: flex; gap: 12px; justify-content: flex-end;
+  }
+  .extra-fields-panel {
+    background: #f8fafc; border: 1px solid var(--border); border-radius: 8px;
+    padding: 16px; margin-bottom: 12px;
+  }
+  .extra-fields-panel h4 {
+    margin: 0 0 12px 0; font-size: 14px; color: var(--primary);
+  }
+  .extra-fields-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+  }
+  @media (max-width: 768px) {
+    .extra-fields-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
 <!-- 授权验证遮罩 -->
 <div class="auth-overlay" id="authOverlay">
   <div class="auth-box">
-    <div class="auth-icon">🔐</div>
-    <h2>人民调解协议生成器</h2>
-    <p class="auth-desc">此工具已加密保护，请输入启动密码</p>
-    <input type="password" class="auth-input" id="authPassword" placeholder="请输入密码" maxlength="20" autofocus>
-    <button class="auth-btn" onclick="verifyPassword()">验证进入</button>
-    <p class="auth-error" id="authError"></p>
-    <p class="auth-hint">如需使用请联系管理员获取密码</p>
+    <!-- 登录面板 -->
+    <div class="login-panel" id="loginPanel">
+      <div class="auth-icon">🔐</div>
+      <h2>人民调解协议生成器</h2>
+      <p class="auth-desc">此工具已加密保护，请输入启动密码</p>
+      <input type="password" class="auth-input" id="authPassword" placeholder="请输入密码" maxlength="20" autofocus>
+      <button class="auth-btn" onclick="verifyPassword()">验证进入</button>
+      <p class="auth-error" id="authError"></p>
+      <button class="auth-link" onclick="showChangePassword()">修改密码</button>
+    </div>
+    <!-- 修改密码面板 -->
+    <div class="change-pwd-panel" id="changePwdPanel">
+      <div class="auth-icon">🔑</div>
+      <h2>修改密码</h2>
+      <p class="auth-desc">请输入原密码并设置新密码</p>
+      <div class="auth-input-group">
+        <label>原密码</label>
+        <input type="password" class="auth-input" id="oldPassword" placeholder="请输入原密码" maxlength="20" style="text-align:left;letter-spacing:2px;">
+      </div>
+      <div class="auth-input-group">
+        <label>新密码</label>
+        <input type="password" class="auth-input" id="newPassword" placeholder="请输入新密码" maxlength="20" style="text-align:left;letter-spacing:2px;">
+      </div>
+      <div class="auth-input-group">
+        <label>确认新密码</label>
+        <input type="password" class="auth-input" id="confirmPassword" placeholder="请再次输入新密码" maxlength="20" style="text-align:left;letter-spacing:2px;">
+      </div>
+      <button class="auth-btn" onclick="changePassword()">确认修改</button>
+      <p class="auth-error" id="changePwdError"></p>
+      <button class="auth-link back" onclick="showLogin()">← 返回登录</button>
+    </div>
   </div>
 </div>
 <div class="app-container">
@@ -306,6 +377,7 @@
       <li><a data-step="5"><span class="step-num">5</span>履行信息</a></li>
       <li><a data-step="6"><span class="step-num">6</span>预览与输出</a></li>
       <li style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;"><a data-step="dossier"><span class="step-num">📋</span>全套卷宗生成</a></li>
+      <li><a data-step="personalDossier"><span class="step-num">📁</span>个人卷宗打印</a></li>
     </ul>
     <div class="sidebar-footer">
       依据《人民调解法》第28-33条<br>司法部人民调解文书格式规范
@@ -481,20 +553,40 @@
         <button class="btn btn-success no-print" onclick="exportAllDossier()">📥 批量导出全部卷宗</button>
       </div>
     </div>
+
+    <!-- 个人卷宗打印 -->
+    <div class="content-card step-panel hidden" id="stepPersonalDossier">
+      <h2 class="section-title">📁 个人卷宗打印</h2>
+      <p class="section-desc">按原始文书格式生成个人卷宗，支持自动填充和独立补充填写</p>
+      <div class="dossier-tabs" id="personalDossierTabs"></div>
+      <div style="margin-bottom:16px;" id="personalDossierExtraFields"></div>
+      <div class="preview-document" id="personalDossierPreview" style="margin-top:16px;"></div>
+      <div class="btn-group" style="justify-content:center; margin-top:16px;" class="no-print">
+        <button class="btn btn-primary no-print" onclick="copyPersonalDossierText()">📋 复制当前文书</button>
+        <button class="btn btn-outline no-print" onclick="printPersonalDossier()">🖨️ 打印当前文书</button>
+        <button class="btn btn-success no-print" onclick="exportAllPersonalDossier()">📥 批量导出全部</button>
+      </div>
+    </div>
   </main>
 </div>
 
 <script>
 // ===== 授权验证（启动密码） =====
-const AUTH_PASSWORD = '2025mediation'; // ← 修改此处设置你的密码
-const AUTH_KEY = 'mediation_auth_v1';
-let authVerified = sessionStorage.getItem(AUTH_KEY) === 'true';
+const DEFAULT_PASSWORD = '2025mediation';
+const PASSWORD_STORAGE_KEY = 'mediation_auth_password_v2';
+// 从 localStorage 读取自定义密码，如果没有则使用默认密码
+function getStoredPassword() {
+  try {
+    return localStorage.getItem(PASSWORD_STORAGE_KEY) || DEFAULT_PASSWORD;
+  } catch(e) { return DEFAULT_PASSWORD; }
+}
+// 始终要求每次打开都输入密码
+let authVerified = false;
 
 function verifyPassword() {
   const input = document.getElementById('authPassword');
   const errEl = document.getElementById('authError');
-  if (input.value === AUTH_PASSWORD) {
-    sessionStorage.setItem(AUTH_KEY, 'true');
+  if (input.value === getStoredPassword()) {
     document.getElementById('authOverlay').classList.add('hidden');
     authVerified = true;
     initApp();
@@ -506,31 +598,98 @@ function verifyPassword() {
     setTimeout(() => input.classList.remove('error'), 400);
   }
 }
+
+// 切换到修改密码面板
+function showChangePassword() {
+  document.getElementById('loginPanel').classList.add('hide');
+  document.getElementById('changePwdPanel').classList.add('show');
+  document.getElementById('authError').textContent = '';
+  document.getElementById('changePwdError').textContent = '';
+  document.getElementById('oldPassword').focus();
+}
+
+// 返回登录面板
+function showLogin() {
+  document.getElementById('loginPanel').classList.remove('hide');
+  document.getElementById('changePwdPanel').classList.remove('show');
+  document.getElementById('changePwdError').textContent = '';
+  document.getElementById('authPassword').focus();
+}
+
+// 修改密码
+function changePassword() {
+  const oldPwd = document.getElementById('oldPassword').value;
+  const newPwd = document.getElementById('newPassword').value;
+  const confirmPwd = document.getElementById('confirmPassword').value;
+  const errEl = document.getElementById('changePwdError');
+  const storedPwd = getStoredPassword();
+
+  // 验证原密码
+  if (oldPwd !== storedPwd) {
+    errEl.textContent = '原密码错误';
+    document.getElementById('oldPassword').classList.add('error');
+    document.getElementById('oldPassword').value = '';
+    document.getElementById('oldPassword').focus();
+    setTimeout(() => document.getElementById('oldPassword').classList.remove('error'), 400);
+    return;
+  }
+  // 验证新密码
+  if (!newPwd) {
+    errEl.textContent = '请输入新密码';
+    return;
+  }
+  if (newPwd.length < 4) {
+    errEl.textContent = '新密码至少需要4个字符';
+    return;
+  }
+  if (newPwd !== confirmPwd) {
+    errEl.textContent = '两次输入的新密码不一致';
+    return;
+  }
+
+  // 保存新密码到 localStorage
+  try {
+    localStorage.setItem(PASSWORD_STORAGE_KEY, newPwd);
+  } catch(e) {
+    errEl.textContent = '密码保存失败，请重试';
+    return;
+  }
+
+  // 清空输入并返回登录
+  document.getElementById('oldPassword').value = '';
+  document.getElementById('newPassword').value = '';
+  document.getElementById('confirmPassword').value = '';
+  errEl.textContent = '';
+  showLogin();
+  const authErr = document.getElementById('authError');
+  authErr.innerHTML = '<span style="color:#27ae60;">密码修改成功，请使用新密码登录</span>';
+  document.getElementById('authPassword').focus();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+  // 登录面板回车验证
   const pwdInput = document.getElementById('authPassword');
   if (pwdInput) {
     pwdInput.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') verifyPassword();
     });
+    pwdInput.focus();
   }
-  // 如果未验证，聚焦密码框
-  if (!authVerified) {
-    pwdInput && pwdInput.focus();
+  // 修改密码面板回车修改
+  const confirmInput = document.getElementById('confirmPassword');
+  if (confirmInput) {
+    confirmInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') changePassword();
+    });
   }
 });
-
-// 如果已验证，直接隐藏遮罩并初始化
-if (authVerified) {
-  document.getElementById('authOverlay').classList.add('hidden');
-  document.addEventListener('DOMContentLoaded', () => initApp());
-}
 
 // ===== 数据模型 =====
 const state = {
   currentStep: 1,
   disputeType: '',
   disputeTypeName: '',
-  protocolNumber: '',
+  protocolNumber: '东公（5103）调解字【2026】0000号',
   parties: [],
   disputeFacts: '',
   disputeResponsibility: '',
@@ -544,7 +703,9 @@ const state = {
   committeeName: '东城街道人民调解委员会',
   mediatorName: '',
   recorderName: '',
-  currentDossier: 0
+  currentDossier: 0,
+  currentPersonalDossier: 0,
+  personalDossierFields: {} // 每个文书独立的补充字段
 };
 
 // ===== 纠纷类型模板 =====
@@ -729,8 +890,8 @@ function selectDisputeType(key) {
 function initParties() {
   if (state.parties.length === 0) {
     state.parties = [
-      { id: 1, type: 'applicant', name: '', gender: '', ethnicity: '汉族', age: '', idNumber: '', occupation: '普工', phone: '', address: '', isOrg: false, establishDate: '', extraInfo: '' },
-      { id: 2, type: 'respondent', name: '', gender: '', ethnicity: '汉族', age: '', idNumber: '', occupation: '普工', phone: '', address: '', isOrg: false, establishDate: '', extraInfo: '' }
+      { id: 1, type: 'applicant', name: '', gender: '', ethnicity: '汉族', age: '', idNumber: '', occupation: '普工', phone: '', address: '广东省东莞市东城街道', isOrg: false, establishDate: '', extraInfo: '' },
+      { id: 2, type: 'respondent', name: '', gender: '', ethnicity: '汉族', age: '', idNumber: '', occupation: '普工', phone: '', address: '广东省东莞市东城街道', isOrg: false, establishDate: '', extraInfo: '' }
     ];
   }
   renderParties();
@@ -739,7 +900,7 @@ function initParties() {
 function addParty() {
   const id = Math.max(0, ...state.parties.map(p => p.id)) + 1;
   state.parties.push({
-    id, type: 'third', name: '', gender: '', ethnicity: '汉族', age: '', idNumber: '', occupation: '普工', phone: '', address: '', isOrg: false, establishDate: '', extraInfo: ''
+    id, type: 'third', name: '', gender: '', ethnicity: '汉族', age: '', idNumber: '', occupation: '普工', phone: '', address: '广东省东莞市东城街道', isOrg: false, establishDate: '', extraInfo: ''
   });
   renderParties();
   updateCopyCount();
@@ -1114,7 +1275,7 @@ function goToStep(step) {
   document.querySelectorAll('.step-panel').forEach(p => p.classList.add('hidden'));
   document.querySelectorAll('#stepNav a').forEach(a => a.classList.remove('active'));
 
-  const panelId = step === 'dossier' ? 'stepDossier' : `step${step}`;
+  const panelId = step === 'dossier' ? 'stepDossier' : (step === 'personalDossier' ? 'stepPersonalDossier' : `step${step}`);
   const panel = document.getElementById(panelId);
   if (panel) panel.classList.remove('hidden');
 
@@ -1123,12 +1284,17 @@ function goToStep(step) {
 
   state.currentStep = step;
 
+  if (step === 2) {
+    const pnInput = document.getElementById('protocolNumber');
+    if (pnInput && !pnInput.value) pnInput.value = state.protocolNumber;
+  }
   if (step === 5) {
     const cmtInput = document.getElementById('committeeName');
     if (cmtInput && !cmtInput.value) cmtInput.value = state.committeeName;
   }
   if (step === 6) renderPreview();
   if (step === 'dossier') renderDossierPreview();
+  if (step === 'personalDossier') { renderPersonalDossierTabs(); switchPersonalDossier(0); }
 }
 
 function nextStep() {
@@ -1164,6 +1330,7 @@ function prevStep() {
   const idx = steps.indexOf(state.currentStep);
   if (idx > 0) goToStep(steps[idx - 1]);
   else if (state.currentStep === 'dossier') goToStep(6);
+  else if (state.currentStep === 'personalDossier') goToStep(6);
 }
 
 function updateStepNav() {
@@ -1186,6 +1353,7 @@ function bindEvents() {
       e.preventDefault();
       const step = a.dataset.step;
       if (step === 'dossier') goToStep('dossier');
+      else if (step === 'personalDossier') goToStep('personalDossier');
       else {
         const s = parseInt(step);
         if (s <= state.currentStep || s === 6) goToStep(s);
@@ -1350,9 +1518,9 @@ function getWordStyles() {
       }
       .party-info-block { text-indent: 0; margin: 12px 0; padding-left: 2em; }
       .party-info-block u { text-decoration: none; border-bottom: 1px solid #000; padding: 0 12px; }
-      .page-break { page-break-after: always; }
-      .dossier-doc { page-break-inside: avoid; }
-      .dossier-doc + .dossier-doc { page-break-before: always; }
+      .page-break { page-break-after: always; mso-page-break-after: always; }
+      .dossier-doc { page-break-inside: avoid; mso-page-break-inside: avoid; }
+      .dossier-doc + .dossier-doc { page-break-before: always; mso-page-break-before: always; }
     </style>
   `;
 }
@@ -1790,9 +1958,12 @@ function exportAllDossier() {
 
   const styles = getWordStyles();
 
-  let html = '<!DOCTYPE html><html><head><meta charset="UTF-8">' + styles + '</head><body>';
+  let html = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:BreakWrappedTables/></w:WordDocument></xml><![endif]-->' + styles + '</head><body>';
   allContent.forEach((doc, i) => {
-    html += '<div class="dossier-doc">' + doc.html + '</div>';
+    if (i > 0) {
+      html += '<br clear="all" style="mso-special-character:line-break;page-break-before:always">';
+    }
+    html += doc.html + '\n';
   });
   html += '</body></html>';
 
@@ -1804,6 +1975,521 @@ function exportAllDossier() {
   a.click();
   URL.revokeObjectURL(url);
   showToast('全套卷宗文档导出成功', 'success');
+}
+
+// ===== 个人卷宗打印 =====
+const personalDossierNames = [
+  '1、卷宗标准封面', '2、新卷内目录', '3、人民调解回访记录',
+  '4、调解案件登记单', '5、卷宗情况说明', '6、收据打印',
+  '7、谅解书', '8、未成年情况说明'
+];
+
+// 每个文书的额外字段定义（基于 docx 实际分析）
+const personalDossierExtraFields = [
+  // 1、卷宗标准封面 - 调解员名、立卷人、调解室、保管期限
+  [
+    { id: 'pd_cover_mediator', label: '调解员姓名', placeholder: '如：梁建荣' },
+    { id: 'pd_cover_filer', label: '立卷人', placeholder: '立卷人姓名' },
+    { id: 'pd_cover_room', label: '调解室全称', placeholder: '如：驻立新派出所人民调解室' },
+    { id: 'pd_cover_storage', label: '保管期限', placeholder: '如：长期' }
+  ],
+  // 2、新卷内目录 - 无额外字段（固定内容）
+  [],
+  // 3、人民调解回访记录
+  [
+    { id: 'pd_followup_date', label: '回访时间（如 2026.6.27）', placeholder: '2026.6.27' },
+    { id: 'pd_followup_result', label: '回访情况', placeholder: '如：经回访，已履行协议义务，矛盾纠纷已化解。' },
+    { id: 'pd_followup_person', label: '回访人签名', placeholder: '回访人姓名' }
+  ],
+  // 4、调解案件登记单 - 选择项格式
+  [
+    { id: 'pd_register_date', label: '调解日期（如 2026年6月27日）', placeholder: '2026年6月27日' },
+    { id: 'pd_register_source', label: '纠纷来源（①依申请调解/②主动调解/③接受委托或移交调解）', placeholder: '①依申请调解' },
+    { id: 'pd_register_type', label: '纠纷类型（在选项中填入标记）', placeholder: '如：⑥损害赔偿纠纷' },
+    { id: 'pd_register_result', label: '调解结果（①口头协议/②书面协议 或 ①行政/②仲裁/③诉讼/④其他）', placeholder: '②书面协议' },
+    { id: 'pd_register_mediator', label: '调解员', placeholder: '调解员姓名' },
+    { id: 'pd_register_record_date', label: '记录日期', placeholder: '如：2026年6月27日' }
+  ],
+  // 5、卷宗情况说明
+  [
+    { id: 'pd_summary_text', label: '情况说明内容（将填入下划线区域）', placeholder: '如：经回访，已履行协议义务，矛盾纠纷已化解。' },
+    { id: 'pd_summary_filer', label: '立卷人', placeholder: '立卷人姓名' }
+  ],
+  // 6、收据打印
+  [
+    { id: 'pd_receipt_receiver', label: '收款人姓名', placeholder: '如：曹丽媛' },
+    { id: 'pd_receipt_receiver_id', label: '收款人身份证号码', placeholder: '18位身份证号' },
+    { id: 'pd_receipt_payer', label: '付款人姓名', placeholder: '如：韩永鑫' },
+    { id: 'pd_receipt_amount', label: '金额（数字）', placeholder: '如：5000' },
+    { id: 'pd_receipt_amount_cn', label: '金额（大写）', placeholder: '如：伍仟元整' },
+    { id: 'pd_receipt_date', label: '收款日期（如 2026年5月22日）', placeholder: '2026年5月22日' }
+  ],
+  // 7、谅解书
+  [
+    { id: 'pd_forgive_party1', label: '甲方姓名', placeholder: '甲方' },
+    { id: 'pd_forgive_id1', label: '甲方身份证号码', placeholder: '18位身份证号' },
+    { id: 'pd_forgive_party2', label: '乙方姓名', placeholder: '乙方' },
+    { id: 'pd_forgive_id2', label: '乙方身份证号码', placeholder: '18位身份证号' },
+    { id: 'pd_forgive_date', label: '事发日期（如 2025年7月14日）', placeholder: '2025年7月14日' },
+    { id: 'pd_forgive_location', label: '事发地点', placeholder: '如：东城街道牛山牛头一村八巷20号' }
+  ],
+  // 8、未成年情况说明
+  [
+    { id: 'pd_minor_name', label: '当事人姓名', placeholder: '如：吴志勇' },
+    { id: 'pd_minor_age', label: '当事人年龄', placeholder: '如：16' },
+    { id: 'pd_minor_dispute_type', label: '纠纷类型', placeholder: '如：损害赔偿纠纷' },
+    { id: 'pd_minor_filer', label: '立卷人', placeholder: '立卷人姓名' }
+  ]
+];
+
+function getPersonalDossierFieldValue(fieldId) {
+  return state.personalDossierFields[fieldId] || '';
+}
+
+function setPersonalDossierFieldValue(fieldId, value) {
+  state.personalDossierFields[fieldId] = value;
+}
+
+// 初始化个人卷宗字段默认值
+function initPersonalDossierDefaults() {
+  const defaults = {
+    'pd_cover_mediator': state.mediatorName || '',
+    'pd_cover_filer': state.mediatorName || '',
+    'pd_cover_room': '驻立新派出所人民调解室',
+    'pd_cover_storage': '长 期',
+    'pd_followup_date': '',
+    'pd_followup_result': '',
+    'pd_followup_person': state.mediatorName || '',
+    'pd_register_date': '',
+    'pd_register_source': '①依申请调解',
+    'pd_register_type': '',
+    'pd_register_result': '②书面协议',
+    'pd_register_mediator': state.mediatorName || '',
+    'pd_register_record_date': '',
+    'pd_summary_text': '',
+    'pd_summary_filer': state.mediatorName || '',
+    'pd_receipt_receiver': '',
+    'pd_receipt_receiver_id': '',
+    'pd_receipt_payer': '',
+    'pd_receipt_amount': '',
+    'pd_receipt_amount_cn': '',
+    'pd_receipt_date': '',
+    'pd_forgive_party1': '',
+    'pd_forgive_id1': '',
+    'pd_forgive_party2': '',
+    'pd_forgive_id2': '',
+    'pd_forgive_date': '',
+    'pd_forgive_location': '东莞市东城街道牛山牛头一村八巷20号',
+    'pd_minor_name': '',
+    'pd_minor_age': '',
+    'pd_minor_dispute_type': '',
+    'pd_minor_filer': state.mediatorName || ''
+  };
+  for (const [key, val] of Object.entries(defaults)) {
+    if (!(key in state.personalDossierFields)) {
+      state.personalDossierFields[key] = val;
+    }
+  }
+  // 自动从当事人信息中填充
+  if (state.parties.length >= 1) {
+    const p1 = state.parties[0];
+    if (!state.personalDossierFields['pd_forgive_party1'] && p1.name) state.personalDossierFields['pd_forgive_party1'] = p1.name;
+    if (!state.personalDossierFields['pd_forgive_id1'] && p1.idNumber) state.personalDossierFields['pd_forgive_id1'] = p1.idNumber;
+    if (!state.personalDossierFields['pd_minor_name'] && p1.name) state.personalDossierFields['pd_minor_name'] = p1.name;
+    if (!state.personalDossierFields['pd_minor_age'] && p1.age) state.personalDossierFields['pd_minor_age'] = String(p1.age);
+    if (!state.personalDossierFields['pd_minor_dispute_type'] && state.disputeTypeName) state.personalDossierFields['pd_minor_dispute_type'] = state.disputeTypeName;
+    if (!state.personalDossierFields['pd_receipt_receiver'] && p1.name) state.personalDossierFields['pd_receipt_receiver'] = p1.name;
+    if (!state.personalDossierFields['pd_receipt_receiver_id'] && p1.idNumber) state.personalDossierFields['pd_receipt_receiver_id'] = p1.idNumber;
+  }
+  if (state.parties.length >= 2) {
+    const p2 = state.parties[1];
+    if (!state.personalDossierFields['pd_forgive_party2'] && p2.name) state.personalDossierFields['pd_forgive_party2'] = p2.name;
+    if (!state.personalDossierFields['pd_forgive_id2'] && p2.idNumber) state.personalDossierFields['pd_forgive_id2'] = p2.idNumber;
+    if (!state.personalDossierFields['pd_receipt_payer'] && p2.name) state.personalDossierFields['pd_receipt_payer'] = p2.name;
+  }
+}
+
+function renderPersonalDossierTabs() {
+  initPersonalDossierDefaults();
+  const container = document.getElementById('personalDossierTabs');
+  container.innerHTML = personalDossierNames.map((name, i) => `
+    <div class="dossier-tab ${i === state.currentPersonalDossier ? 'active' : ''}" onclick="switchPersonalDossier(${i})">${name}</div>
+  `).join('');
+}
+
+function renderPersonalDossierExtraFields() {
+  const idx = state.currentPersonalDossier;
+  const fields = personalDossierExtraFields[idx] || [];
+  const container = document.getElementById('personalDossierExtraFields');
+  if (fields.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  let html = '<div class="extra-fields-panel"><h4>📝 补充填写</h4><div class="extra-fields-grid">';
+  fields.forEach(f => {
+    const val = getPersonalDossierFieldValue(f.id) || f.defaultValue || '';
+    html += `<div class="form-group" style="margin-bottom:0;">
+      <label class="form-label" style="font-size:13px;">${escHtml(f.label)}</label>
+      <input type="text" class="form-input" id="${f.id}" value="${escHtml(val)}" placeholder="${escHtml(f.placeholder)}" onchange="setPersonalDossierFieldValue('${f.id}',this.value)" oninput="setPersonalDossierFieldValue('${f.id}',this.value);renderPersonalDossierPreview();" style="font-size:13px;padding:6px 10px;">
+    </div>`;
+  });
+  html += '</div></div>';
+  container.innerHTML = html;
+}
+
+function switchPersonalDossier(index) {
+  state.currentPersonalDossier = index;
+  renderPersonalDossierTabs();
+  renderPersonalDossierExtraFields();
+  renderPersonalDossierPreview();
+}
+
+function renderPersonalDossierPreview() {
+  initPersonalDossierDefaults();
+  let html = '';
+
+  switch (state.currentPersonalDossier) {
+    case 0: html = renderPersonalCover(); break;
+    case 1: html = renderPersonalCatalog(); break;
+    case 2: html = renderPersonalFollowup(); break;
+    case 3: html = renderPersonalRegister(); break;
+    case 4: html = renderPersonalSummary(); break;
+    case 5: html = renderPersonalReceipt(); break;
+    case 6: html = renderPersonalForgive(); break;
+    case 7: html = renderPersonalMinor(); break;
+  }
+
+  document.getElementById('personalDossierPreview').innerHTML = html;
+}
+
+// ===== 1、卷宗标准封面（基于 docx 分析：A4, margins: top/bottom=1440twips=2.54cm, left/right=1800twips=3.18cm）=====
+function renderPersonalCover() {
+  const app = state.parties.find(p => p.type === 'applicant') || state.parties[0] || {};
+  const res = state.parties.find(p => p.type === 'respondent') || (state.parties[1] || state.parties[0]) || {};
+  const mediator = getPersonalDossierFieldValue('pd_cover_mediator') || state.mediatorName || '';
+  const filer = getPersonalDossierFieldValue('pd_cover_filer') || state.mediatorName || '';
+  const room = getPersonalDossierFieldValue('pd_cover_room') || '驻立新派出所人民调解室';
+  const storage = getPersonalDossierFieldValue('pd_cover_storage') || '长 期';
+  const protocolNum = state.protocolNumber || '东公（5103）调解字【2026】0000号';
+  const cmtName = state.committeeName || '东城街道人民调解委员会';
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth()+1, d = now.getDate();
+  const dateDotStr = `${y}.${m}.${d}`;
+
+  const partyText = `${escHtml(app.name || '')}与${escHtml(res.name || '')}${escHtml(state.disputeTypeName || '其他')}纠纷案`;
+
+  let html = `<div style="font-family:SimSun,宋体,serif;font-size:12pt;color:#000;padding:40px 0 0 0;min-height:100vh;">`;
+  
+  // 10个空行（模拟 docx 中10个空段落）
+  for (let i = 0; i < 10; i++) html += `<p style="line-height:2.0;margin:0;">&nbsp;</p>`;
+  
+  // 第11行：空格 + 东城街道(22pt) + 空格 + 空格(16pt)
+  html += `<p style="line-height:2.0;margin:0;text-align:center;"><span style="font-size:22pt;">${escHtml(cmtName)}</span></p>`;
+  
+  // 第12行：驻立新派出所人民调解室 (16pt)
+  html += `<p style="line-height:2.0;margin:0;text-align:center;"><span style="font-size:16pt;">${escHtml(room)}</span></p>`;
+  
+  // 2个空行
+  html += `<p style="line-height:2.0;margin:0;">&nbsp;</p>`;
+  html += `<p style="line-height:2.0;margin:0;">&nbsp;</p>`;
+  
+  // 第15行：空格(16pt) + 空格(24pt) - 实际原docx中这行是调 解 卷 宗的空格占位
+  html += `<p style="line-height:2.0;margin:0;text-align:center;"><span style="font-size:24pt;letter-spacing:0.5em;">调 解 卷 宗</span></p>`;
+  
+  // 空行
+  html += `<p style="line-height:2.0;margin:0;">&nbsp;</p>`;
+  
+  // 接下来是具体信息行（宋体12pt + 首行缩进）
+  // 行：当事人（ind_firstLine=3360 twips ≈ 3360/20=168pt 但实际用indent）
+  const infoStyle = 'style="font-family:宋体,SimSun,serif;font-size:12pt;line-height:3.0;margin:0;text-indent:8em;"';
+  
+  html += `<p ${infoStyle}>当事人：<span style="text-decoration:underline;">${escHtml(partyText)}</span></p>`;
+  html += `<p style="font-family:宋体,SimSun,serif;font-size:12pt;line-height:3.0;margin:0;text-indent:3em;">协议编号：<span style="text-decoration:underline;">${escHtml(protocolNum)}</span></p>`;
+  html += `<p style="font-family:宋体,SimSun,serif;font-size:16pt;line-height:3.0;margin:0;text-indent:4em;">调解员：<span style="text-decoration:underline;">${escHtml(mediator)}</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="text-decoration:underline;">${escHtml(dateDotStr)}</span></p>`;
+  html += `<p style="font-family:宋体,SimSun,serif;font-size:16pt;line-height:3.2;margin:0;text-indent:5em;">立卷人：<span style="text-decoration:underline;">${escHtml(filer)}</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="text-decoration:underline;">${escHtml(dateDotStr)}</span></p>`;
+  html += `<p style="font-family:宋体,SimSun,serif;font-size:16pt;line-height:3.2;margin:0;text-indent:5em;">保管期限：<span style="text-decoration:underline;">${escHtml(storage)}</span></p>`;
+  html += `<p style="font-family:宋体,SimSun,serif;font-size:16pt;line-height:3.2;margin:0;text-indent:5em;">&nbsp;</p>`;
+  
+  html += `</div>`;
+  return html;
+}
+
+// ===== 2、新卷内目录（基于 docx 分析：黑体24pt标题 + 15行表格）=====
+function renderPersonalCatalog() {
+  // 与 docx 完全一致的 14 行目录条目
+  const items = [
+    '人民调解申请书', '人民调解受理登记表', '人民调解调查记录',
+    '权利义务告知书', '人民调解记录', '人民调解协议书',
+    '送达回执', '存根', '人民调解回访记录',
+    '卷宗情况说明', '当事人身份信息', '人民调解证据材料',
+    '司法确认有关材料', '封底'
+  ];
+  let html = `<div style="font-family:SimSun,宋体,serif;font-size:12pt;color:#000;">`;
+  html += `<p style="text-align:center;font-family:黑体,SimHei,sans-serif;font-size:24pt;margin:24px 0;text-indent:0;">卷 内 目 录</p>`;
+  html += `<table style="border-collapse:collapse;width:100%;font-family:仿宋,FangSong,serif;font-size:12pt;" border="1" cellspacing="0">`;
+  html += `<tr style="text-align:center;"><th style="width:10%;padding:6px;">序号</th><th style="width:60%;padding:6px;">文书名称</th><th style="width:15%;padding:6px;">页号</th><th style="width:15%;padding:6px;">备注</th></tr>`;
+  items.forEach((item, i) => {
+    html += `<tr><td style="text-align:center;padding:6px;">${i+1}</td><td style="padding:6px;">${item}</td><td style="padding:6px;"></td><td style="padding:6px;"></td></tr>`;
+  });
+  html += `</table></div>`;
+  return html;
+}
+
+// ===== 3、人民调解回访记录（基于 docx 分析：黑体18pt标题 + 仿宋12pt正文 + 下划线）=====
+function renderPersonalFollowup() {
+  const app = state.parties.find(p => p.type === 'applicant') || state.parties[0] || {};
+  const res = state.parties.find(p => p.type === 'respondent') || (state.parties[1] || state.parties[0]) || {};
+  const protocolNum = state.protocolNumber || '东公（5103）调解字【2026】0000号';
+  const followupDate = getPersonalDossierFieldValue('pd_followup_date') || '';
+  const followupResult = getPersonalDossierFieldValue('pd_followup_result') || '';
+  const followupPerson = getPersonalDossierFieldValue('pd_followup_person') || state.mediatorName || '';
+  const cmtName = state.committeeName || '东城街道人民调解委员会';
+
+  const lineStyle = 'font-family:仿宋,FangSong,serif;font-size:12pt;line-height:2.5;margin:0;';
+  const ul = 'text-decoration:underline;';
+  const noUl = 'text-decoration:none;';
+
+  let html = `<div style="${lineStyle}">`;
+  html += `<p style="text-align:center;font-family:黑体,SimHei,sans-serif;font-size:18pt;line-height:2.0;margin:0 0 8px 0;">人民调解回访记录</p>`;
+  html += `<p style="${lineStyle}">&nbsp;</p>`;
+  html += `<p style="${lineStyle}"><span style="${noUl}">当 事 人</span><span style="${ul}">&nbsp;&nbsp;${escHtml(app.name||'')}、${escHtml(res.name||'')}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${lineStyle}"><span style="${noUl}">调解协议编号</span><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(protocolNum)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${lineStyle}"><span style="${noUl}">回访事由</span><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;确认履行情况&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${lineStyle}"><span style="${noUl}">回访时间</span><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(followupDate)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${lineStyle}"><span style="${noUl}">回访情况：</span><span style="${ul}">${escHtml(followupResult)}</span><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${lineStyle}"><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${lineStyle}"><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${lineStyle}">&nbsp;</p>`;
+  html += `<p style="${lineStyle}">&nbsp;</p>`;
+  html += `<p style="${lineStyle}"><span style="${noUl}">回访人（签名）</span><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${lineStyle}"><span style="${noUl}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="text-align:right;${lineStyle}"><span style="${noUl}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="${ul}">&nbsp;&nbsp;${escHtml(cmtName)}&nbsp;&nbsp;</span></p>`;
+  html += `<p style="text-align:right;${lineStyle}"><span style="${noUl}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="${ul}">&nbsp;${escHtml(followupDate)}&nbsp;</span></p>`;
+  html += `<p style="${lineStyle}">&nbsp;</p>`;
+  html += `<p style="${lineStyle}">&nbsp;</p>`;
+  html += `<p style="${lineStyle}">&nbsp;</p>`;
+  html += `<p style="${lineStyle}">&nbsp;</p>`;
+  html += `</div>`;
+  return html;
+}
+
+// ===== 4、调解案件登记单（基于 docx 分析：仿宋12pt + 下划线 + 选择项格式）=====
+function renderPersonalRegister() {
+  const app = state.parties.find(p => p.type === 'applicant') || state.parties[0] || {};
+  const res = state.parties.find(p => p.type === 'respondent') || (state.parties[1] || state.parties[0]) || {};
+  const protocolNum = state.protocolNumber || '东公（5103）调解字【2026】0000号';
+  const regDate = getPersonalDossierFieldValue('pd_register_date') || '';
+  const regSource = getPersonalDossierFieldValue('pd_register_source') || '①依申请调解';
+  const regType = getPersonalDossierFieldValue('pd_register_type') || '';
+  const regResult = getPersonalDossierFieldValue('pd_register_result') || '②书面协议';
+  const regMediator = getPersonalDossierFieldValue('pd_register_mediator') || state.mediatorName || '';
+  const regRecordDate = getPersonalDossierFieldValue('pd_register_record_date') || '';
+  const cmtName = state.committeeName || '东城街道人民调解委员会';
+  const partyNames = `${escHtml(app.name||'')}、${escHtml(res.name||'')}`;
+
+  const ls = 'font-family:仿宋,FangSong,serif;font-size:12pt;line-height:2.0;margin:0;';
+  const ul = 'text-decoration:underline;';
+
+  let html = `<div style="${ls}">`;
+  
+  // 编号行
+  html += `<p style="${ls}"><span>编号：</span><span style="${ul}">${escHtml(protocolNum)}</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${ls}">存根</p>`;
+  html += `<p style="text-align:center;font-family:黑体,SimHei,sans-serif;font-size:14pt;line-height:2.0;margin:0;">人民调解员调解案件登记单</p>`;
+  
+  // 日期和当事人行
+  html += `<p style="${ls}"><span style="${ul}">&nbsp;${escHtml(regDate)}&nbsp;</span><span>日，调解</span><span style="${ul}">&nbsp;${escHtml(partyNames)}&nbsp;</span><span>之间的纠纷。</span></p>`;
+  
+  // 纠纷来源（选择项）
+  html += `<p style="text-indent:2em;${ls}">纠纷是<span>①依申请调解②主动调解③接受委托或移交调解。</span></p>`;
+  
+  // 纠纷类型（选择项）
+  html += `<p style="text-indent:2em;${ls}">纠纷类型：<span>①婚姻家庭纠纷②邻里纠纷③房屋宅基地纠纷④合同纠纷⑤生产经营</span></p>`;
+  html += `<p style="text-indent:2em;${ls}"><span>纠纷⑥损害赔偿纠纷⑦山林土地纠纷⑧征地拆迁纠纷⑨环境污染纠纷⑩劳动争议纠纷⑪道路交通事故纠纷⑫医疗纠纷⑬物业管理纠纷⑭消费纠纷⑮其他纠纷</span><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  
+  // 调解情况
+  html += `<p style="text-indent:2em;${ls}">调解情况：</p>`;
+  html += `<p style="text-indent:2em;${ls}">1、调解成功，达成<span>①口头协议②书面协议。</span></p>`;
+  html += `<p style="text-indent:2em;${ls}">2、调解不成，告知当事人通过<span>①行政②仲裁③诉讼④其他途径解决。</span></p>`;
+  
+  // 调解员和记录日期
+  html += `<p style="text-indent:2em;${ls}">调 解 员：<span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="text-indent:2em;${ls}">记录日期：<span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  
+  // 调委会名称
+  html += `<p style="text-indent:2em;${ls}"><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="${ul}">&nbsp;&nbsp;${escHtml(cmtName)}&nbsp;&nbsp;</span></p>`;
+  
+  // 分隔线
+  html += `<p style="${ls}">…………………………………………………………………………………………………………………</p>`;
+  html += `</div>`;
+  return html;
+}
+
+// ===== 5、卷宗情况说明（基于 docx 分析：黑体18pt居中标题 + 多行下划线区域 + 立卷人）=====
+function renderPersonalSummary() {
+  const summaryText = getPersonalDossierFieldValue('pd_summary_text') || '';
+  const filer = getPersonalDossierFieldValue('pd_summary_filer') || state.mediatorName || '';
+  const ls = 'font-family:仿宋,FangSong,serif;font-size:12pt;line-height:2.5;margin:0;';
+  const ul = 'text-decoration:underline;';
+
+  let html = `<div style="${ls}">`;
+  html += `<p style="text-align:center;font-family:黑体,SimHei,sans-serif;font-size:18pt;margin:0 0 12px 0;">卷宗情况说明</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  
+  // 下划线内容行
+  if (summaryText) {
+    html += `<p style="${ls}"><span style="${ul}">&nbsp;&nbsp;${escHtml(summaryText)}</span><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  }
+  // 空白下划线行（模拟手写区域）
+  for (let i = 0; i < 10; i++) {
+    html += `<p style="${ls}"><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  }
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `<p style="text-align:right;${ls}"><span>立 卷 人</span><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `</div>`;
+  return html;
+}
+
+// ===== 6、收据打印（基于 docx 分析：14pt加粗 + 下划线填充）=====
+function renderPersonalReceipt() {
+  const receiver = getPersonalDossierFieldValue('pd_receipt_receiver') || '';
+  const receiverId = getPersonalDossierFieldValue('pd_receipt_receiver_id') || '';
+  const payer = getPersonalDossierFieldValue('pd_receipt_payer') || '';
+  const amount = getPersonalDossierFieldValue('pd_receipt_amount') || '';
+  const amountCn = getPersonalDossierFieldValue('pd_receipt_amount_cn') || '';
+  const receiptDate = getPersonalDossierFieldValue('pd_receipt_date') || '';
+
+  const ls = 'font-family:SimSun,宋体,serif;font-size:14pt;font-weight:bold;line-height:2.5;margin:0;';
+  const ul = 'text-decoration:underline;';
+
+  let html = `<div style="${ls}">`;
+  html += `<p style="text-align:center;font-size:20pt;margin:0 0 16px 0;">收据</p>`;
+  html += `<p style="${ls}">本人：<span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(receiver)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>身份证号码是：<span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(receiverId)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${ls}">于${escHtml(receiptDate || '______年______月______日')}在东城街道立新派出所调解室收到付<span style="${ul}">&nbsp;</span>款人：<span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(payer)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>一共<span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(amount)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>元。（大写：${escHtml(amountCn)}元）</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `<p style="${ls}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</p>`;
+  html += `<p style="text-indent:12em;${ls}">收款人：<span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(receiver)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${ls}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;时间：<span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(receiptDate)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  for (let i = 0; i < 3; i++) html += `<p style="${ls}">&nbsp;</p>`;
+  html += `</div>`;
+  return html;
+}
+
+// ===== 7、谅解书（基于 docx 分析：14pt 加粗标题 + 甲方/乙方格式 + 地点带下划线）=====
+function renderPersonalForgive() {
+  const party1 = getPersonalDossierFieldValue('pd_forgive_party1') || '';
+  const id1 = getPersonalDossierFieldValue('pd_forgive_id1') || '';
+  const party2 = getPersonalDossierFieldValue('pd_forgive_party2') || '';
+  const id2 = getPersonalDossierFieldValue('pd_forgive_id2') || '';
+  const forgiveDate = getPersonalDossierFieldValue('pd_forgive_date') || '';
+  const location = getPersonalDossierFieldValue('pd_forgive_location') || '';
+
+  const ls = 'font-family:SimSun,宋体,serif;font-size:14pt;line-height:2.5;margin:0;';
+  const ul = 'text-decoration:underline;';
+
+  let html = `<div style="${ls}">`;
+  html += `<p style="text-align:center;font-size:14pt;font-weight:bold;margin:0 0 16px 0;">谅解书</p>`;
+  html += `<p style="${ls}">甲方：<span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(party1)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>身份证号码：<span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(id1)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${ls}">乙方：<span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(party2)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>身份证号码：<span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(id2)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `<p style="${ls}">于${escHtml(forgiveDate || '______年______月______日')}，在<span style="${ul}">${escHtml(location)}</span>发生侵权纠纷，经调解，现双方当事人达成侵权损害赔偿的协议，在本协议履行完毕之后，双方谅解对方的侵权行为，</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `<p style="${ls}">且双方不再追究侵权对方所涉及的任何法律责任。&nbsp;&nbsp;&nbsp;</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `<p style="${ls}">&nbsp;&nbsp;&nbsp;</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `</div>`;
+  return html;
+}
+
+// ===== 8、未成年情况说明（基于 docx 分析：黑体18pt居中标题 + 15pt下划线正文 + 立卷人）=====
+function renderPersonalMinor() {
+  const minorName = getPersonalDossierFieldValue('pd_minor_name') || '';
+  const minorAge = getPersonalDossierFieldValue('pd_minor_age') || '';
+  const disputeType = getPersonalDossierFieldValue('pd_minor_dispute_type') || state.disputeTypeName || '';
+  const filer = getPersonalDossierFieldValue('pd_minor_filer') || state.mediatorName || '';
+
+  const ls = 'font-family:仿宋,FangSong,serif;font-size:15pt;line-height:2.5;margin:0;';
+  const ul = 'text-decoration:underline;';
+
+  let html = `<div style="${ls}">`;
+  html += `<p style="text-align:center;font-family:黑体,SimHei,sans-serif;font-size:18pt;margin:0 0 12px 0;">卷宗情况说明</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  
+  // 正文内容（下划线）
+  const text = `&nbsp;&nbsp;在"人民调解受理登记表"中有一处书写错误，已经更正为"${escHtml(disputeType)}"。${escHtml(minorName)}为${escHtml(minorAge)}岁，根据民法典规定，十六周岁以上未成年人，以自己的劳动收入为主要生活来源的，视为完全民事行为能力人。本案中${escHtml(minorName)}为${escHtml(minorAge)}岁，以自己的劳动收入为主要生活来源的，视为完全民事行为能力人，无需监护人到场调解及签文书。此次调解成功，矛盾纠纷已化解&nbsp;。`;
+  html += `<p style="${ls}"><span style="${ul}">${text}</span><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  
+  // 空白下划线行
+  for (let i = 0; i < 9; i++) {
+    html += `<p style="${ls}"><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  }
+  
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `<p style="${ls}">&nbsp;</p>`;
+  html += `<p style="text-align:right;${ls}"><span>立 卷 人</span><span style="${ul}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>`;
+  html += `</div>`;
+  return html;
+}
+
+// ===== 个人卷宗操作 =====
+function copyPersonalDossierText() {
+  const content = document.getElementById('personalDossierPreview').innerText;
+  navigator.clipboard.writeText(content).then(() => {
+    showToast('当前文书已复制到剪贴板', 'success');
+  }).catch(() => {
+    showToast('复制失败，请手动选择文本复制', 'error');
+  });
+}
+
+function printPersonalDossier() {
+  const content = document.getElementById('personalDossierPreview').innerHTML;
+  const origPreview = document.getElementById('previewContent').innerHTML;
+  document.getElementById('previewContent').innerHTML = content;
+  window.print();
+  document.getElementById('previewContent').innerHTML = origPreview;
+}
+
+function exportAllPersonalDossier() {
+  const allContent = [];
+  const orig = state.currentPersonalDossier;
+  for (let i = 0; i < personalDossierNames.length; i++) {
+    state.currentPersonalDossier = i;
+    renderPersonalDossierExtraFields();
+    renderPersonalDossierPreview();
+    allContent.push({
+      name: personalDossierNames[i],
+      html: document.getElementById('personalDossierPreview').innerHTML
+    });
+  }
+  state.currentPersonalDossier = orig;
+  renderPersonalDossierExtraFields();
+  renderPersonalDossierPreview();
+
+  const styles = getWordStyles();
+
+  let html = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:BreakWrappedTables/></w:WordDocument></xml><![endif]-->' + styles + '</head><body>';
+  allContent.forEach((doc, i) => {
+    if (i > 0) {
+      html += '<br clear="all" style="mso-special-character:line-break;page-break-before:always">';
+    }
+    html += doc.html + '\n';
+  });
+  html += '</body></html>';
+
+  const blob = new Blob([html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `个人卷宗_${state.disputeTypeName || '全套'}.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('个人卷宗全部文档导出成功（每份文书独立分页）', 'success');
 }
 </script>
 </body>
