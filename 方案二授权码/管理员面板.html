@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理员面板 - 人民调解协议生成器</title>
+<style>
+  :root {
+    --primary: #1a3a5c; --primary-light: #2c5f8a; --accent: #c9a84c;
+    --danger: #c0392b; --success: #27ae60; --gray-bg: #f5f6f8;
+    --border: #d0d5dd; --text: #1e293b; --text-secondary: #64748b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #0f2b45 0%, #1a3a5c 50%, #0d2137 100%);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    color: var(--text);
+  }
+  .container { max-width: 800px; width: 95%; margin: 40px 0; }
+  .header {
+    text-align: center; color: #fff; margin-bottom: 28px;
+  }
+  .header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  .header p { font-size: 14px; opacity: 0.7; }
+  .card {
+    background: #fff; border-radius: 14px; padding: 32px; margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+  .card h2 { font-size: 18px; color: var(--primary); margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #f0f0f0; }
+
+  /* 登录 */
+  .login-box { text-align: center; max-width: 400px; margin: 0 auto; }
+  .login-box .lock-icon { font-size: 48px; margin-bottom: 16px; }
+  .login-box input {
+    width: 100%; padding: 12px 16px; border: 2px solid var(--border);
+    border-radius: 10px; font-size: 16px; text-align: center;
+    transition: border-color 0.2s; outline: none; margin-bottom: 16px;
+  }
+  .login-box input:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(44,95,138,0.1); }
+  .login-box input.error { border-color: var(--danger); animation: shake 0.4s ease; }
+  @keyframes shake { 0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-5px)} }
+  .login-box .login-btn {
+    width: 100%; padding: 12px; background: linear-gradient(135deg, #1a3a5c, #2c5f8a);
+    color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer;
+  }
+  .login-box .login-btn:hover { opacity: 0.9; }
+  .login-box .login-error { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 20px; }
+
+  /* 主面板 */
+  .main-panel { display: none; }
+
+  /* 表单 */
+  .form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .form-group { flex: 1; min-width: 180px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--text); }
+  .form-group input, .form-group select {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 14px; font-family: inherit; outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(44,95,138,0.08); }
+
+  /* 按钮 */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px;
+    border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+    border: none; transition: all 0.2s; font-family: inherit;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #0f2b45; }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-accent:hover { opacity: 0.9; }
+  .btn-danger { background: #fff; color: var(--danger); border: 1px solid #fecaca; }
+  .btn-danger:hover { background: #fef2f2; border-color: var(--danger); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn-outline { background: #fff; color: var(--primary); border: 1px solid var(--border); }
+  .btn-outline:hover { background: #f8fafc; }
+
+  /* 生成结果 */
+  .gen-result {
+    margin-top: 12px; padding: 12px 16px; background: #e8f0fe;
+    border-radius: 8px; word-break: break-all; font-family: monospace;
+    font-size: 14px; color: #1a3a5c; text-align: center; display: none;
+  }
+  .gen-result .code-text { font-size: 16px; font-weight: 700; margin: 6px 0; }
+  .gen-result .copy-btn { margin-top: 8px; }
+
+  /* 用户列表 */
+  .user-list-section { margin-top: 8px; }
+  .user-list-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+  }
+  .user-list-header h3 { font-size: 15px; color: var(--primary); }
+  .user-count { font-size: 13px; color: var(--text-secondary); background: #f1f5f9; padding: 3px 10px; border-radius: 12px; }
+  .user-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+    border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  }
+  .user-table th {
+    background: #f8fafc; padding: 10px 12px; text-align: left;
+    font-weight: 600; color: var(--text-secondary); font-size: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .user-table td {
+    padding: 10px 12px; border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+  }
+  .user-table tr:last-child td { border-bottom: none; }
+  .user-table tr:hover { background: #fafbfc; }
+  .user-table .user-name { font-weight: 600; color: var(--text); }
+  .user-table .user-code { font-family: monospace; font-size: 11px; color: var(--text-secondary); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .user-table .code-cell { cursor: pointer; position: relative; transition: background 0.15s; }
+  .user-table .code-cell:hover { background: #e8f0fe; }
+  .user-table .code-cell:hover::after { content: '📋 点击复制'; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-size: 10px; color: #1a3a5c; background: rgba(255,255,255,0.9); padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+  .user-table .code-cell.copied::after { content: '✅ 已复制'; color: #27ae60; }
+  .status-badge {
+    font-size: 11px; padding: 3px 10px; border-radius: 10px; font-weight: 600;
+    display: inline-block; white-space: nowrap;
+  }
+  .status-active { background: #dcfce7; color: #166534; }
+  .status-revoked { background: #fef2f2; color: #991b1b; }
+  .status-expired { background: #fef3c7; color: #92400e; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+
+  /* Toast */
+  .toast {
+    position: fixed; top: 20px; right: 20px; z-index: 9999;
+    padding: 12px 24px; border-radius: 8px; color: #fff; font-size: 14px;
+    font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .toast-success { background: var(--success); }
+  .toast-error { background: var(--danger); }
+
+  /* 底部操作 */
+  .footer-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: space-between; }
+  .footer-actions .right { display: flex; gap: 10px; }
+
+  /* 已撤销板块 */
+  #revokedCard { border-left: 3px solid #c0392b; }
+  #revokedCard .user-list-header h3 { color: #991b1b; }
+  .btn-delete { background: #fff; color: #b91c1c; border: 1px solid #fecaca; }
+  .btn-delete:hover { background: #fef2f2; border-color: #dc2626; color: #dc2626; }
+
+  /* 响应式 */
+  @media (max-width: 600px) {
+    .card { padding: 20px; }
+    .user-table th:nth-child(3), .user-table td:nth-child(3) { display: none; }
+    .form-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 头部 -->
+  <div class="header">
+    <h1>⚖️ 管理员面板</h1>
+    <p>人民调解协议生成器 · 授权管理</p>
+  </div>
+
+  <!-- 登录卡片 -->
+  <div class="card login-box" id="loginBox">
+    <div class="lock-icon">🔐</div>
+    <h2 style="border:none;margin-bottom:16px;">管理员登录</h2>
+    <input type="password" id="adminKey" placeholder="请输入管理员密钥" autofocus>
+    <button class="login-btn" onclick="login()">登 录</button>
+    <p class="login-error" id="loginError"></p>
+  </div>
+
+  <!-- 主面板 -->
+  <div class="main-panel" id="mainPanel">
+
+    <!-- 生成授权码 -->
+    <div class="card">
+      <h2>🔑 生成授权码</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>授权对象（备注姓名/单位）</label>
+          <input type="text" id="authUser" placeholder="如：张三、XX律所">
+        </div>
+        <div class="form-group" style="max-width:140px;">
+          <label>有效期（天）</label>
+          <input type="number" id="authDays" value="365" min="1" max="3650">
+        </div>
+      </div>
+      <button class="btn btn-accent" onclick="generateCode()">✨ 生成授权码</button>
+      <div class="gen-result" id="genResult">
+        <div>✅ 授权码已生成：</div>
+        <div class="code-text" id="genCodeText"></div>
+        <div style="font-size:12px;color:#64748b;">有效期至：<span id="genExpire"></span> | 对象：<span id="genUser"></span></div>
+        <button class="btn btn-sm btn-outline copy-btn" onclick="copyCode()">📋 复制授权码</button>
+      </div>
+    </div>
+
+    <!-- 已授权用户列表 -->
+    <div class="card">
+      <div class="user-list-header">
+        <h3>📋 已授权用户</h3>
+        <span class="user-count" id="userCount">0 个授权</span>
+      </div>
+      <div id="userListContent">
+        <div class="empty-state">
+          <div class="icon">📭</div>
+          <div>暂无授权记录</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 已撤销授权列表 -->
+    <div class="card" id="revokedCard" style="display:none;">
+      <div class="user-list-header">
+        <h3>🗑️ 已撤销授权</h3>
+        <span class="user-count" id="revokedCount" style="background:#fef2f2;color:#991b1b;">0 条记录</span>
+      </div>
+      <div id="revokedListContent"></div>
+    </div>
+
+    <!-- 底部操作 -->
+    <div class="footer-actions">
+      <button class="btn btn-outline btn-sm" onclick="exportRecords()">📤 导出授权记录</button>
+      <div class="right">
+        <button class="btn btn-outline btn-sm" onclick="logout()">🚪 退出登录</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ===== 配置 =====
+const ADMIN_KEY = 'admin2025';  // ← 管理员密钥（与主页面保持一致）
+const AUTH_RECORDS_KEY = 'mediation_auth_records';
+const REVOKED_CODES_KEY = 'mediation_revoked_codes';
+var codeStore = {};  // 存储 id -> 完整授权码的映射，供点击复制使用
+
+// ===== UTF-8 编解码 =====
+function toUTF8Bytes(str) {
+  var bytes = [];
+  for (var i = 0; i < str.length; i++) {
+    var c = str.charCodeAt(i);
+    if (c < 0x80) { bytes.push(c); }
+    else if (c < 0x800) { bytes.push(0xC0 | (c >> 6)); bytes.push(0x80 | (c & 0x3F)); }
+    else if (c < 0x10000) { bytes.push(0xE0 | (c >> 12)); bytes.push(0x80 | ((c >> 6) & 0x3F)); bytes.push(0x80 | (c & 0x3F)); }
+    else { bytes.push(0xF0 | (c >> 18)); bytes.push(0x80 | ((c >> 12) & 0x3F)); bytes.push(0x80 | ((c >> 6) & 0x3F)); bytes.push(0x80 | (c & 0x3F)); }
+  }
+  return bytes;
+}
+function fromUTF8Bytes(bytes) {
+  var result = '', i = 0;
+  while (i < bytes.length) {
+    var c = bytes[i], charLen;
+    if (c < 0x80) charLen = 1;
+    else if ((c & 0xE0) === 0xC0) charLen = 2;
+    else if ((c & 0xF0) === 0xE0) charLen = 3;
+    else charLen = 4;
+    if (i + charLen > bytes.length) break;
+    var cp;
+    if (charLen === 1) cp = c;
+    else if (charLen === 2) cp = ((c & 0x1F) << 6) | (bytes[i + 1] & 0x3F);
+    else if (charLen === 3) cp = ((c & 0x0F) << 12) | ((bytes[i + 1] & 0x3F) << 6) | (bytes[i + 2] & 0x3F);
+    else cp = ((c & 0x07) << 18) | ((bytes[i + 1] & 0x3F) << 12) | ((bytes[i + 2] & 0x3F) << 6) | (bytes[i + 3] & 0x3F);
+    result += String.fromCharCode(cp);
+    i += charLen;
+  }
+  return result;
+}
+
+// ===== Base64 =====
+function base64Encode(bytes) {
+  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  var result = '', i = 0;
+  while (i < bytes.length) {
+    var a = bytes[i] || 0, b = (i + 1 < bytes.length) ? bytes[i + 1] : 0, c = (i + 2 < bytes.length) ? bytes[i + 2] : 0;
+    result += chars[a >> 2] + chars[((a & 3) << 4) | (b >> 4)];
+    result += (i + 1 < bytes.length) ? chars[((b & 15) << 2) | (c >> 6)] : '=';
+    result += (i + 2 < bytes.length) ? chars[c & 63] : '=';
+    i += 3;
+  }
+  return result;
+}
+function base64Decode(str) {
+  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  var result = [], i = 0;
+  while (i < str.length) {
+    var c0 = str[i] || 'A', c1 = str[i + 1] || 'A', c2 = str[i + 2] || 'A', c3 = str[i + 3] || 'A';
+    var a = chars.indexOf(c0), b = chars.indexOf(c1), c = chars.indexOf(c2), d = chars.indexOf(c3);
+    result.push((a << 2) | (b >> 4));
+    if (c2 !== '=') result.push(((b & 15) << 4) | (c >> 2));
+    if (c3 !== '=') result.push(((c & 3) << 6) | d);
+    i += 4;
+  }
+  return result;
+}
+
+// ===== 加解密（与主页面一致） =====
+function authEncode(str) {
+  var key = 'Mediation2025!';
+  var bytes = toUTF8Bytes(str);
+  for (var i = 0; i < bytes.length; i++) {
+    bytes[i] = (bytes[i] ^ key.charCodeAt(i % key.length)) & 0xFF;
+  }
+  return base64Encode(bytes);
+}
+
+function authDecode(encoded) {
+  try {
+    var key = 'Mediation2025!';
+    var bytes = base64Decode(encoded);
+    for (var i = 0; i < bytes.length; i++) {
+      bytes[i] = (bytes[i] ^ key.charCodeAt(i % key.length)) & 0xFF;
+    }
+    return fromUTF8Bytes(bytes);
+  } catch(e) { return null; }
+}
+
+// ===== 登录 =====
+function login() {
+  var input = document.getElementById('adminKey');
+  var errEl = document.getElementById('loginError');
+  var key = input.value.trim();
+
+  if (key !== ADMIN_KEY) {
+    errEl.textContent = '❌ 管理员密钥错误';
+    input.classList.add('error');
+    setTimeout(function() { input.classList.remove('error'); }, 400);
+    return;
+  }
+
+  // 登录成功
+  sessionStorage.setItem('admin_logged_in', '1');
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('mainPanel').style.display = 'block';
+  renderUserList();
+  showToast('登录成功', 'success');
+}
+
+// 检查登录状态
+function checkLogin() {
+  if (sessionStorage.getItem('admin_logged_in') === '1') {
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('mainPanel').style.display = 'block';
+    renderUserList();
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('admin_logged_in');
+  document.getElementById('loginBox').style.display = 'block';
+  document.getElementById('mainPanel').style.display = 'none';
+  document.getElementById('adminKey').value = '';
+  showToast('已退出登录', 'success');
+}
+
+// ===== 授权记录管理 =====
+function getRecords() {
+  try { return JSON.parse(localStorage.getItem(AUTH_RECORDS_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+
+function saveRecords(records) {
+  localStorage.setItem(AUTH_RECORDS_KEY, JSON.stringify(records));
+}
+
+function getRevokedCodes() {
+  try { return JSON.parse(localStorage.getItem(REVOKED_CODES_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+
+function addRevokedCode(code) {
+  var revoked = getRevokedCodes();
+  if (revoked.indexOf(code) === -1) {
+    revoked.push(code);
+    localStorage.setItem(REVOKED_CODES_KEY, JSON.stringify(revoked));
+  }
+}
+
+// ===== 生成授权码 =====
+function generateCode() {
+  var userEl = document.getElementById('authUser');
+  var daysEl = document.getElementById('authDays');
+  var resultEl = document.getElementById('genResult');
+
+  var user = userEl.value.trim() || '未备注';
+  var days = parseInt(daysEl.value) || 365;
+
+  var expireDate = new Date();
+  expireDate.setDate(expireDate.getDate() + days);
+  var expireStr = expireDate.toISOString().split('T')[0];
+  var genDate = new Date().toISOString().split('T')[0];
+
+  var payload = JSON.stringify({
+    user: user,
+    expire: expireStr,
+    gen: genDate
+  });
+  var code = authEncode(payload);
+
+  // 保存到授权记录
+  var records = getRecords();
+  records.push({
+    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+    user: user,
+    code: code,
+    expire: expireStr,
+    genDate: genDate,
+    status: 'active',
+    createdAt: new Date().toISOString()
+  });
+  saveRecords(records);
+
+  // 显示结果
+  document.getElementById('genCodeText').textContent = code;
+  document.getElementById('genExpire').textContent = expireStr;
+  document.getElementById('genUser').textContent = user;
+  resultEl.style.display = 'block';
+
+  // 清空表单
+  userEl.value = '';
+
+  // 刷新列表
+  renderUserList();
+  showToast('授权码已生成，有效期 ' + days + ' 天', 'success');
+}
+
+function copyCode() {
+  var code = document.getElementById('genCodeText').textContent;
+  navigator.clipboard.writeText(code).then(function() {
+    showToast('授权码已复制到剪贴板', 'success');
+  }).catch(function() {
+    showToast('复制失败，请手动选择复制', 'error');
+  });
+}
+
+// ===== 点击表格授权码单元格复制 =====
+function copyCodeFromCell(td) {
+  var id = td.getAttribute('data-id');
+  var fullCode = codeStore[id] || '';
+  if (!fullCode) { showToast('未找到完整授权码', 'error'); return; }
+
+  navigator.clipboard.writeText(fullCode).then(function() {
+    td.classList.add('copied');
+    setTimeout(function() { td.classList.remove('copied'); }, 1500);
+    showToast('完整授权码已复制到剪贴板', 'success');
+  }).catch(function() {
+    // 降级方案：选中文本让用户手动复制
+    var span = td.querySelector('.user-code');
+    if (span) {
+      span.textContent = fullCode;
+      span.style.maxWidth = 'none';
+      span.style.overflow = 'visible';
+      var range = document.createRange();
+      range.selectNodeContents(span);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      setTimeout(function() {
+        span.textContent = fullCode.substring(0, 16) + '...';
+        span.style.maxWidth = '';
+        span.style.overflow = '';
+      }, 2000);
+    }
+    showToast('已选中授权码，请按 Ctrl+C 复制', 'error');
+  });
+}
+
+// ===== 撤销授权 =====
+function revokeAuth(recordId, code) {
+  if (!confirm('确定撤销该授权吗？该用户将无法继续使用。')) return;
+
+  console.log('[revokeAuth] recordId:', recordId);
+  console.log('[revokeAuth] code:', code ? code.substring(0, 30) + '...' : '(空)');
+
+  // 更新记录状态
+  var records = getRecords();
+  var record = records.find(function(r) { return r.id === recordId; });
+  if (record) {
+    record.status = 'revoked';
+    record.revokedAt = new Date().toISOString();
+  }
+  saveRecords(records);
+
+  // 加入撤销列表（供主页面轮询检查）
+  addRevokedCode(code);
+
+  // 通过 BroadcastChannel 通知主页面
+  try {
+    var channel = new BroadcastChannel('mediation_auth_channel');
+    channel.postMessage({ type: 'revoke', code: code, time: Date.now() });
+    channel.close();
+  } catch(e) {}
+
+  // 通过 window.opener 通知主页面（如果是从主页面链接打开的）
+  try {
+    if (window.opener && !window.opener.closed) {
+      try {
+        window.opener.localStorage.setItem('mediation_revoked_codes',
+          localStorage.getItem('mediation_revoked_codes') || '[]');
+      } catch(e2) {}
+      if (typeof window.opener.forceLogoutByAdmin === 'function') {
+        window.opener.forceLogoutByAdmin(code);
+      }
+    }
+  } catch(e) {}
+
+  renderUserList();
+  showToast('已撤销该授权', 'success');
+}
+
+// ===== 重新激活授权 =====
+function reactivateAuth(recordId) {
+  if (!confirm('确定重新激活该授权吗？')) return;
+
+  var records = getRecords();
+  var record = records.find(function(r) { return r.id === recordId; });
+  if (record) {
+    record.status = 'active';
+    record.revokedAt = null;
+  }
+  saveRecords(records);
+
+  // 从撤销列表中移除
+  var revoked = getRevokedCodes();
+  var code = record ? record.code : '';
+  revoked = revoked.filter(function(c) { return c !== code; });
+  localStorage.setItem(REVOKED_CODES_KEY, JSON.stringify(revoked));
+
+  renderUserList();
+  showToast('已重新激活该授权', 'success');
+}
+
+// ===== 删除授权记录 =====
+function deleteRecord(recordId) {
+  if (!confirm('确定永久删除该授权记录吗？此操作不可恢复。')) return;
+
+  var records = getRecords();
+  var record = records.find(function(r) { return r.id === recordId; });
+  records = records.filter(function(r) { return r.id !== recordId; });
+  saveRecords(records);
+
+  // 同时从撤销列表中移除对应授权码
+  if (record && record.code) {
+    var revoked = getRevokedCodes();
+    revoked = revoked.filter(function(c) { return c !== record.code; });
+    localStorage.setItem(REVOKED_CODES_KEY, JSON.stringify(revoked));
+  }
+
+  renderUserList();
+  showToast('已永久删除该授权记录', 'success');
+}
+
+
+
+// ===== 渲染用户列表 =====
+function renderUserList() {
+  var records = getRecords();
+  var container = document.getElementById('userListContent');
+  var countEl = document.getElementById('userCount');
+  var revokedCard = document.getElementById('revokedCard');
+  var revokedContainer = document.getElementById('revokedListContent');
+  var revokedCountEl = document.getElementById('revokedCount');
+
+  // 自动更新过期状态
+  var now = new Date();
+  var changed = false;
+  records.forEach(function(r) {
+    if (r.status === 'active') {
+      var exp = new Date(r.expire + 'T23:59:59');
+      if (now > exp) {
+        r.status = 'expired';
+        changed = true;
+      }
+    }
+  });
+  if (changed) saveRecords(records);
+
+  // 分离已撤销和有效记录
+  var revokedRecords = records.filter(function(r) { return r.status === 'revoked'; });
+  var activeRecords = records.filter(function(r) { return r.status !== 'revoked'; });
+
+  // 统计
+  var activeCount = activeRecords.filter(function(r) { return r.status === 'active'; }).length;
+  countEl.textContent = activeRecords.length + ' 个授权（' + activeCount + ' 个活跃）';
+
+  // ===== 渲染有效授权列表（不含已撤销） =====
+  if (activeRecords.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><div>暂无授权记录</div></div>';
+  } else {
+    // 按时间倒序排列
+    var sorted = activeRecords.slice().sort(function(a, b) {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    var statusLabels = { active: '活跃', expired: '已过期' };
+    var statusClasses = { active: 'status-active', expired: 'status-expired' };
+
+    var html = '<table class="user-table">';
+    html += '<thead><tr><th>授权对象</th><th>授权码</th><th>有效期至</th><th>生成日期</th><th>状态</th><th>操作</th></tr></thead>';
+    html += '<tbody>';
+
+    sorted.forEach(function(r) {
+      var statusText = statusLabels[r.status] || r.status;
+      var statusClass = statusClasses[r.status] || '';
+      var codePreview = r.code ? r.code.substring(0, 16) + '...' : '';
+      codeStore[r.id] = r.code || '';
+
+      html += '<tr>';
+      html += '<td><span class="user-name">' + escHtml(r.user) + '</span></td>';
+      html += '<td class="code-cell" data-id="' + r.id + '" onclick="copyCodeFromCell(this)" title="点击复制完整授权码"><span class="user-code">' + escHtml(codePreview) + '</span></td>';
+      html += '<td>' + escHtml(r.expire) + '</td>';
+      html += '<td>' + escHtml(r.genDate) + '</td>';
+      html += '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>';
+      html += '<td style="white-space:nowrap;">';
+      if (r.status === 'active') {
+        html += '<button class="btn btn-danger btn-sm" onclick="revokeAuth(\'' + r.id + '\', \'' + escHtml(r.code || '') + '\')" title="撤销授权">✕ 撤销</button>';
+      } else if (r.status === 'expired') {
+        html += '<button class="btn btn-danger btn-sm" onclick="revokeAuth(\'' + r.id + '\', \'' + escHtml(r.code || '') + '\')" title="撤销授权">✕ 撤销</button>';
+      }
+      html += '</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  // ===== 渲染已撤销授权列表 =====
+  if (revokedRecords.length === 0) {
+    revokedCard.style.display = 'none';
+    revokedContainer.innerHTML = '';
+  } else {
+    revokedCard.style.display = 'block';
+    revokedCountEl.textContent = revokedRecords.length + ' 条记录';
+
+    var revokedSorted = revokedRecords.slice().sort(function(a, b) {
+      return new Date(b.revokedAt || b.createdAt) - new Date(a.revokedAt || a.createdAt);
+    });
+
+    var revHtml = '<table class="user-table">';
+    revHtml += '<thead><tr><th>授权对象</th><th>授权码</th><th>有效期至</th><th>撤销时间</th><th>状态</th><th>操作</th></tr></thead>';
+    revHtml += '<tbody>';
+
+    revokedSorted.forEach(function(r) {
+      var codePreview = r.code ? r.code.substring(0, 16) + '...' : '';
+      var revokedTime = r.revokedAt ? r.revokedAt.split('T')[0] : '-';
+      codeStore[r.id] = r.code || '';
+
+      revHtml += '<tr>';
+      revHtml += '<td><span class="user-name">' + escHtml(r.user) + '</span></td>';
+      revHtml += '<td class="code-cell" data-id="' + r.id + '" onclick="copyCodeFromCell(this)" title="点击复制完整授权码"><span class="user-code">' + escHtml(codePreview) + '</span></td>';
+      revHtml += '<td>' + escHtml(r.expire) + '</td>';
+      revHtml += '<td>' + revokedTime + '</td>';
+      revHtml += '<td><span class="status-badge status-revoked">已撤销</span></td>';
+      revHtml += '<td style="white-space:nowrap;">';
+      revHtml += '<button class="btn btn-outline btn-sm" onclick="reactivateAuth(\'' + r.id + '\')" title="重新激活" style="margin-right:6px;">↻ 激活</button>';
+      revHtml += '<button class="btn btn-delete btn-sm" onclick="deleteRecord(\'' + r.id + '\')" title="永久删除">🗑 删除</button>';
+      revHtml += '</td>';
+      revHtml += '</tr>';
+    });
+
+    revHtml += '</tbody></table>';
+    revokedContainer.innerHTML = revHtml;
+  }
+}
+
+// ===== 导出授权记录 =====
+function exportRecords() {
+  var records = getRecords();
+  if (records.length === 0) { showToast('没有授权记录可导出', 'error'); return; }
+
+  // 导出时隐藏完整授权码（安全考虑）
+  var safeRecords = records.map(function(r) {
+    var clone = Object.assign({}, r);
+    clone.code = clone.code ? clone.code.substring(0, 8) + '****' : '';
+    return clone;
+  });
+
+  var exportData = {
+    exportTime: new Date().toISOString(),
+    total: records.length,
+    records: safeRecords
+  };
+
+  var blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '授权记录_' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('已导出 ' + records.length + ' 条授权记录（授权码已脱敏）', 'success');
+}
+
+// ===== 工具函数 =====
+function escHtml(str) {
+  if (!str && str !== 0) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function showToast(msg, type) {
+  var existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  var toast = document.createElement('div');
+  toast.className = 'toast toast-' + type;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(function() { toast.remove(); }, 2500);
+}
+
+// ===== 键盘事件 =====
+document.addEventListener('DOMContentLoaded', function() {
+  var keyInput = document.getElementById('adminKey');
+  if (keyInput) {
+    keyInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') login();
+    });
+  }
+  checkLogin();
+});
+</script>
+</body>
+</html>

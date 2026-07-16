@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CloudBase 配置指南 - 设备绑定后端</title>
+<style>
+  :root { --primary: #1a3a5c; --accent: #c9a84c; --success: #27ae60; --danger: #c0392b; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; color: #1e293b; line-height: 1.8; }
+  h1 { color: var(--primary); border-bottom: 3px solid var(--accent); padding-bottom: 10px; }
+  h2 { color: var(--primary); margin-top: 32px; }
+  .step { background: #f8fafc; border-left: 4px solid var(--primary); padding: 16px 20px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+  .step .num { display: inline-block; background: var(--primary); color: #fff; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; margin-right: 10px; font-weight: bold; }
+  .code-block { background: #1e293b; color: #e2e8f0; padding: 16px 20px; border-radius: 8px; font-family: monospace; font-size: 13px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+  .tip { background: #e8f0fe; border: 1px solid #bfdbfe; padding: 12px 16px; border-radius: 8px; margin: 12px 0; }
+  .warn { background: #fef3c7; border: 1px solid #fde68a; padding: 12px 16px; border-radius: 8px; margin: 12px 0; }
+  .checklist { list-style: none; padding: 0; }
+  .checklist li { padding: 8px 0; }
+  .checklist li::before { content: '☐ '; color: var(--accent); font-size: 18px; }
+  .checklist li.done::before { content: '✅ '; }
+  button { background: var(--primary); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; margin: 4px; }
+  button:hover { opacity: 0.9; }
+  .env-id-display { font-size: 18px; font-weight: bold; color: var(--primary); font-family: monospace; }
+</style>
+</head>
+<body>
+<h1>☁️ CloudBase 配置指南</h1>
+<p>本指南帮助你完成 CloudBase 后端配置，实现<strong>真正的跨设备绑定</strong>。</p>
+<p style="color:#64748b;font-size:14px;">预计耗时：<strong>5分钟</strong> | 费用：<strong>完全免费</strong>（CloudBase 免费额度充足）</p>
+
+<h2>📋 配置步骤</h2>
+
+<div class="step">
+  <span class="num">1</span><strong>创建 CloudBase 环境</strong>
+  <p>打开 <a href="https://console.cloud.tencent.com/tcb" target="_blank">腾讯云 CloudBase 控制台</a>，点击「新建环境」：</p>
+  <ul>
+    <li>环境名称：随意填写，如 <code>mediation</code></li>
+    <li>计费方式：选择<strong>「按量计费」</strong>（有免费额度）</li>
+    <li>地域：选择<strong>「上海」</strong></li>
+  </ul>
+  <p>创建完成后，复制<strong>环境ID</strong>（格式如 <code>mediation-6gxq7o0k5c8e9e2f</code>）</p>
+</div>
+
+<div class="step">
+  <span class="num">2</span><strong>开启匿名登录</strong>
+  <p>进入 CloudBase 控制台，选择你刚创建的环境。</p>
+  <p>在左侧菜单找到：<strong>「登录授权」</strong></p>
+  <p>⚠️ 如果左侧菜单没有「登录授权」，点击左下角的头像/设置图标切换到<strong>旧版 UI</strong>，或直接在环境卡片上点击进入环境。</p>
+  <p>在页面中找到「匿名登录」，将开关切换为<strong>「开启」</strong></p>
+  <div class="tip">💡 新版 CloudBase 控制台可能在「环境设置 → 登录认证」中，如果找不到请切换到旧版控制台。</div>
+</div>
+
+<div class="step">
+  <span class="num">3</span><strong>配置安全域名（安全来源）</strong>
+  <p>在 CloudBase 控制台，进入你的环境后，左侧菜单找到：</p>
+  <p><strong>「环境配置」→「安全来源」</strong></p>
+  <p>⚠️ 新版控制台路径：左侧 <strong>「环境」</strong> 菜单下，点击进入你的环境 → 上方标签页找 <strong>「安全配置」</strong> 或 <strong>「安全来源」</strong></p>
+  <p>在「安全域名」区域，点击<strong>「添加域名」</strong>，添加以下域名：</p>
+  <ul>
+    <li><code>localhost</code>（本地测试）</li>
+    <li>你的实际网站域名（如部署到线上，例如 <code>www.qcloud.com</code> 格式）</li>
+  </ul>
+  <div class="warn">
+    <strong>⚠️ 重要：</strong><code>127.0.0.1</code> 这类纯 IP 地址<strong>不支持</strong>作为安全域名，会提示「域名格式错误」。<br>
+    安全域名的正确格式示例：<code>www.qcloud.com</code>、<code>www.qcloud.com:8080</code>、<code>*.qcloud.com</code><br>
+    本地测试只需添加 <code>localhost</code> 即可（通常已默认添加）。
+  </div>
+  <div class="tip">💡 注意：<code>localhost</code> 通常是默认自动添加的，可以确认一下是否已存在。</div>
+  <div class="tip">⚠️ 配置后约 <strong>1-2分钟</strong> 生效，最多可配置 50 个域名。</div>
+</div>
+
+<div class="step">
+  <span class="num">4</span><strong>创建数据库集合</strong>
+  <p>在 CloudBase 控制台左侧菜单：<strong>「数据库」→「集合管理」→「新建集合」</strong></p>
+  <p>集合名称填写：<code class="code-block">device_bindings</code></p>
+  <p>创建后，点击集合名称进入，切换到<strong>「权限设置」</strong>标签页，选择：</p>
+  <p><strong style="color:#c0392b;font-size:16px;">⚠️ 必须选：「所有用户可读写」</strong></p>
+  <div class="warn">
+    <strong>🚨 非常重要！</strong>如果权限选错（如「仅创建者可读写」），会导致：<br>
+    · 浏览器A绑定的设备记录，浏览器B <strong>读取不到</strong> → 一码一设备机制<strong>完全失效</strong><br>
+    · 两个浏览器都能各自创建绑定，同一个授权码被多台设备同时使用<br><br>
+    <strong>正确设置：</strong>选择<strong>「所有用户可读写」</strong>（匿名用户之间需要能读取彼此创建的记录）
+  </div>
+</div>
+
+<div class="step">
+  <span class="num">5</span><strong>更新代码中的环境ID</strong>
+  <p>打开以下两个文件，将环境ID替换为你的实际环境ID：</p>
+  <ul>
+    <li><code>人民调解协议生成器v6.0_方案二_设备绑定.html</code> — 搜索 <code>envId:</code></li>
+    <li><code>管理员面板v2_设备绑定.html</code> — 搜索 <code>envId:</code></li>
+  </ul>
+  <div class="code-block">// 将这两处的 envId 替换为你的环境ID
+var CLOUDBASE_CONFIG = {
+  envId: '你的环境ID',  // ← 改这里
+  enabled: true
+};</div>
+</div>
+
+<div class="step">
+  <span class="num">6</span><strong>验证配置</strong>
+  <p>用浏览器打开主页面，按 F12 打开开发者工具 → 控制台（Console），查看是否有以下日志：</p>
+  <div class="code-block">[CloudBase] 初始化成功，环境: mediation-xxxxx</div>
+  <p>如果看到这行日志，说明配置成功！</p>
+  <p>如果看到：</p>
+  <div class="code-block">[CloudBase] 初始化失败，回退到 localStorage 模式</div>
+  <p>说明配置有问题，请检查以上步骤。</p>
+</div>
+
+<h2>🔧 常见问题</h2>
+
+<div class="tip">
+  <strong>Q: 匿名登录失败？</strong><br>
+  A: 确保在「登录授权」中开启了匿名登录。注意匿名登录 token 有时效，刷新页面时会自动续期。
+</div>
+
+<div class="tip">
+  <strong>Q: 一台电脑刷新后自动登出？</strong><br>
+  A: 这是本地验证+云端验证的双重保护机制。v6.1已优化：本地验证通过后不再强制依赖云端验证结果，避免网络波动导致误登出。<br>
+  如果仍有问题，F12打开控制台查看 <code>[Auth]</code> 开头的日志，确认是哪个环节触发了登出。
+</div>
+
+<div class="tip">
+  <strong>Q: 数据库操作报 403 错误？</strong><br>
+  A: 检查集合权限设置，确保设置了「所有用户可读写」。
+</div>
+
+<div class="tip">
+  <strong>Q: CORS 跨域错误？</strong><br>
+  A: 检查安全域名配置，确保添加了 <code>localhost</code> 或你的域名。配置后等10分钟生效。
+</div>
+
+<div class="tip">
+  <strong>Q: 不想用 CloudBase 了怎么办？</strong><br>
+  A: 在代码中将 <code>enabled: true</code> 改为 <code>enabled: false</code>，系统会自动回退到 localStorage 模式（仅限单浏览器）。</div>
+
+<h2>✅ 配置检查清单</h2>
+<ul class="checklist">
+  <li>创建 CloudBase 环境</li>
+  <li>开启匿名登录</li>
+  <li>添加安全域名（localhost + 实际域名，不支持IP地址）</li>
+  <li>创建 device_bindings 集合</li>
+  <li>设置集合权限为「所有用户可读写」</li>
+  <li>更新两个文件中的 envId</li>
+  <li>打开页面验证控制台日志</li>
+</ul>
+
+<h2>🚀 测试跨设备绑定</h2>
+<ol>
+  <li>在<strong>电脑A的Chrome</strong>中打开主页面，输入授权码 → 应显示「设备已绑定（第1/1台）」</li>
+  <li>在<strong>电脑B的Chrome</strong>中打开主页面，输入<strong>同一授权码</strong> → 应显示「已绑定1台设备（上限1台），当前设备不在授权列表中」</li>
+  <li>在<strong>管理员面板</strong>中点击「解绑」，然后在电脑B重新输入 → 应成功绑定</li>
+</ol>
+
+<p style="text-align:center;margin-top:40px;color:#94a3b8;font-size:13px;">
+  配置完成后，设备绑定数据将存储在 CloudBase 云端，所有设备共享同一份绑定状态。
+</p>
+</body>
+</html>

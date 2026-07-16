@@ -1,0 +1,2081 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人民调解协议生成器</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --primary: #1a3a5c;
+    --primary-light: #2c5f8a;
+    --primary-lighter: #e8f0fe;
+    --accent: #c9a84c;
+    --danger: #c0392b;
+    --success: #27ae60;
+    --gray-bg: #f5f6f8;
+    --border: #d0d5dd;
+    --text: #1e293b;
+    --text-secondary: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: var(--gray-bg);
+    color: var(--text);
+    margin: 0;
+    min-height: 100vh;
+  }
+  .app-container { display: flex; min-height: 100vh; }
+  /* 左侧导航 */
+  .sidebar {
+    width: 260px;
+    background: linear-gradient(180deg, #0f2b45 0%, #1a3a5c 100%);
+    color: #fff;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-header {
+    padding: 24px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .sidebar-header h1 { font-size: 18px; font-weight: 700; margin: 0; line-height: 1.4; }
+  .sidebar-header .subtitle { font-size: 12px; opacity: 0.7; margin-top: 4px; }
+  .step-nav { list-style: none; padding: 12px 0; margin: 0; flex: 1; }
+  .step-nav li { padding: 0 12px; }
+  .step-nav li a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; border-radius: 8px;
+    color: rgba(255,255,255,0.65); text-decoration: none;
+    font-size: 14px; transition: all 0.2s; cursor: pointer;
+  }
+  .step-nav li a:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .step-nav li a.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; }
+  .step-nav li a.completed { color: #81c784; }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+  .step-nav li a.active .step-num { background: var(--accent); border-color: var(--accent); color: #1a3a5c; }
+  .step-nav li a.completed .step-num { background: #81c784; border-color: #81c784; color: #1a3a5c; }
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; opacity: 0.5; }
+
+  /* 主内容区 */
+  .main-content { flex: 1; padding: 32px 40px; overflow-y: auto; max-width: 900px; }
+  .content-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 32px; margin-bottom: 24px; }
+  .section-title { font-size: 20px; font-weight: 700; color: var(--primary); margin: 0 0 8px 0; }
+  .section-desc { font-size: 14px; color: var(--text-secondary); margin: 0 0 24px 0; }
+
+  /* 表单 */
+  .form-group { margin-bottom: 20px; }
+  .form-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+  .form-label .required { color: var(--danger); margin-left: 2px; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; padding: 10px 14px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 14px; font-family: inherit;
+    transition: border-color 0.2s; background: #fff; color: var(--text);
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(44,95,138,0.1);
+  }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-hint { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  .form-error { font-size: 12px; color: var(--danger); margin-top: 4px; display: none; }
+
+  /* 纠纷类型卡片 */
+  .dispute-types { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .dispute-card {
+    border: 2px solid var(--border); border-radius: 10px; padding: 16px;
+    cursor: pointer; transition: all 0.2s; text-align: center;
+  }
+  .dispute-card:hover { border-color: var(--primary-light); background: var(--primary-lighter); }
+  .dispute-card.selected { border-color: var(--primary); background: var(--primary-lighter); }
+  .dispute-card .icon { font-size: 28px; margin-bottom: 8px; }
+  .dispute-card .name { font-size: 14px; font-weight: 600; }
+
+  /* 按钮 */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.2s; font-family: inherit;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #0f2b45; }
+  .btn-outline { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .btn-outline:hover { background: var(--primary-lighter); }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-success:hover { background: #219a52; }
+  .btn-danger { background: #fff; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-danger:hover { background: #fef2f2; }
+  .btn-sm { padding: 6px 14px; font-size: 13px; }
+  .btn-lg { padding: 14px 28px; font-size: 16px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-group { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+
+  /* 当事人卡片 */
+  .party-card {
+    border: 1px solid var(--border); border-radius: 10px; padding: 20px;
+    margin-bottom: 16px; background: #fafbfc;
+  }
+  .party-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .party-card-header h4 { margin: 0; font-size: 15px; color: var(--primary); }
+  .party-type-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 600; margin-left: 8px;
+  }
+  .badge-applicant { background: #e8f0fe; color: var(--primary); }
+  .badge-respondent { background: #fef3c7; color: #92400e; }
+  .badge-third { background: #f0fdf4; color: #166534; }
+  .party-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+  /* 协议条款 */
+  .clause-item {
+    display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px;
+    padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: #fafbfc;
+  }
+  .clause-item:hover { border-color: var(--primary-light); }
+  .clause-num {
+    background: var(--primary); color: #fff; border-radius: 50%;
+    width: 28px; height: 28px; display: flex; align-items: center;
+    justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .clause-input { flex: 1; border: none; background: transparent; font-size: 14px; padding: 4px; outline: none; }
+  .clause-input:focus { background: #fff; border-radius: 4px; }
+
+  /* 预览 */
+  .preview-document {
+    background: #fff; border: 1px solid #ccc; padding: 56px 64px;
+    max-width: 210mm; margin: 0 auto; font-size: 16px; line-height: 1.8;
+    font-family: "SimSun", "宋体", serif; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    color: #000;
+  }
+  .preview-document h2 { text-align: center; font-size: 22px; margin-bottom: 28px; font-weight: bold; letter-spacing: 2px; }
+  .preview-document .doc-number { text-align: center; margin-bottom: 24px; }
+  .preview-document p { text-indent: 2em; margin: 12px 0; }
+  .preview-document .no-indent { text-indent: 0; }
+  .preview-document .signatures { display: flex; justify-content: space-between; margin-top: 40px; flex-wrap: wrap; gap: 16px; line-height: 2.2; }
+  .preview-document .signatures div { min-width: 220px; }
+  .preview-document .seal { text-align: center; margin-top: 28px; line-height: 2.2; }
+  .preview-document .clause { margin-left: 2em; text-indent: 0; margin: 6px 0; }
+  .preview-document .dossier-note { color: #666; font-size: 14px; margin-top: 16px; }
+  .preview-document .party-info-block { text-indent: 0; margin: 12px 0; padding-left: 2em; }
+  .preview-document .party-info-block u { text-decoration: none; border-bottom: 1px solid #000; padding: 0 12px; }
+
+  /* 卷宗Tabs */
+  .dossier-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+  .dossier-tab {
+    padding: 8px 16px; border-radius: 6px 6px 0 0; cursor: pointer;
+    font-size: 13px; border: 1px solid transparent; border-bottom: none;
+    background: transparent; color: var(--text-secondary); transition: all 0.2s;
+  }
+  .dossier-tab:hover { color: var(--primary); background: var(--primary-lighter); }
+  .dossier-tab.active { background: #fff; color: var(--primary); border-color: var(--border); font-weight: 600; }
+
+  /* Toast */
+  .toast {
+    position: fixed; top: 20px; right: 20px; z-index: 9999;
+    padding: 12px 24px; border-radius: 8px; color: #fff; font-size: 14px;
+    font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .toast-success { background: var(--success); }
+  .toast-error { background: var(--danger); }
+
+  /* 打印样式 */
+  @media print {
+    body { background: #fff; }
+    .sidebar, .btn-group, .dossier-tabs, .no-print { display: none !important; }
+    .main-content { padding: 0; max-width: none; }
+    .content-card { box-shadow: none; padding: 0; }
+    .preview-document {
+      border: none; padding: 0; box-shadow: none;
+      font-family: "SimSun", "宋体", serif; font-size: 16px; line-height: 1.8; color: #000;
+    }
+    .preview-document h2 { font-size: 22px; font-weight: bold; margin-bottom: 28px; letter-spacing: 2px; }
+    .preview-document p { margin: 12px 0; line-height: 1.8; }
+    .preview-document .signatures { margin-top: 40px; line-height: 2.2; }
+    .preview-document .seal { margin-top: 28px; line-height: 2.2; }
+    .preview-document .party-info-block { text-indent: 0; margin: 12px 0; padding-left: 2em; }
+    .preview-document .party-info-block u { text-decoration: none; border-bottom: 1px solid #000; padding: 0 12px; }
+    @page { size: A4; margin: 2.54cm 3.18cm 2.54cm 3.18cm; }
+  }
+
+  /* 响应式 */
+  @media (max-width: 1024px) {
+    .sidebar { width: 220px; }
+    .main-content { padding: 20px; }
+    .dispute-types { grid-template-columns: repeat(2, 1fr); }
+    .party-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 768px) {
+    .app-container { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: static; }
+    .step-nav { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; }
+    .step-nav li { padding: 0; }
+    .step-nav li a { padding: 8px 12px; font-size: 12px; gap: 4px; }
+    .main-content { padding: 16px; }
+    .dispute-types { grid-template-columns: 1fr 1fr; }
+    .party-grid { grid-template-columns: 1fr; }
+    .preview-document { padding: 24px 16px; font-size: 14px; }
+    .dossier-tabs { gap: 2px; }
+    .dossier-tab { padding: 6px 10px; font-size: 11px; }
+  }
+
+  .hidden { display: none !important; }
+  .text-danger { color: var(--danger); }
+  .text-success { color: var(--success); }
+  .text-muted { color: var(--text-secondary); }
+  .mb-8 { margin-bottom: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .flex-center { display: flex; align-items: center; gap: 8px; }
+
+  /* 授权验证遮罩 */
+  .auth-overlay {
+    position: fixed; inset: 0; z-index: 10000;
+    background: linear-gradient(135deg, #0f2b45 0%, #1a3a5c 50%, #0d2137 100%);
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; overflow-y: auto;
+    pointer-events: auto;
+  }
+  /* 遮罩隐藏时不要阻止交互 */
+  .auth-overlay.hidden {
+    pointer-events: none;
+  }
+  .auth-box {
+    background: #fff; border-radius: 14px; padding: 40px 36px;
+    width: 420px; max-width: 94%; text-align: center;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  }
+  .auth-box .auth-icon { font-size: 48px; margin-bottom: 12px; }
+  .auth-box h2 { font-size: 20px; color: #1a3a5c; margin: 0 0 8px 0; font-weight: 700; }
+  .auth-box .auth-desc { font-size: 13px; color: #64748b; margin: 0 0 24px 0; line-height: 1.6; }
+  .auth-box .auth-input {
+    width: 100%; padding: 12px 16px; border: 2px solid #d0d5dd;
+    border-radius: 10px; font-size: 15px; text-align: center; outline: none;
+    font-family: monospace; transition: border-color 0.2s;
+  }
+  .auth-box .auth-input:focus { border-color: #2c5f8a; box-shadow: 0 0 0 3px rgba(44,95,138,0.1); }
+  .auth-box .auth-input.error { border-color: #c0392b; animation: shake 0.4s ease; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    50% { transform: translateX(8px); }
+    75% { transform: translateX(-5px); }
+  }
+  .auth-box .auth-btn {
+    width: 100%; margin-top: 20px; padding: 12px;
+    background: linear-gradient(135deg, #1a3a5c, #2c5f8a);
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+    font-family: inherit;
+  }
+  .auth-box .auth-btn:hover { opacity: 0.9; }
+  .auth-box .auth-error { color: #c0392b; font-size: 13px; margin-top: 12px; min-height: 20px; }
+  .auth-box .auth-info { font-size: 12px; color: #94a3b8; margin-top: 20px; line-height: 1.6; }
+  .auth-box .auth-info .expire { color: #c9a84c; font-weight: 600; }
+  .auth-box .auth-admin {
+    margin-top: 16px; padding-top: 16px; border-top: 1px dashed #d0d5dd;
+    font-size: 11px; color: #94a3b8;
+  }
+  .auth-box .auth-admin a { color: #2c5f8a; cursor: pointer; text-decoration: underline; }
+</style>
+</head>
+<body>
+<!-- 授权验证遮罩 -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box">
+    <div class="auth-icon">🔑</div>
+    <h2>人民调解协议生成器</h2>
+    <p class="auth-desc">此工具需授权使用<br>请输入管理员提供的授权码</p>
+    <input type="text" class="auth-input" id="authCode" placeholder="请输入授权码" autofocus>
+    <button class="auth-btn" onclick="verifyCode()">验证授权</button>
+    <p class="auth-error" id="authError"></p>
+    <div class="auth-info" id="authInfo" style="display:none;">
+      已授权 · 有效期至 <span class="expire" id="expireDate"></span>
+    </div>
+    <div class="auth-admin">
+      管理员入口 · <a href="管理员面板.html" target="_blank">打开管理员面板</a>
+    </div>
+  </div>
+</div>
+<div class="app-container">
+  <!-- 左侧导航 -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h1>⚖️ 人民调解协议生成器</h1>
+      <div class="subtitle">基层调解 · 规范高效</div>
+    </div>
+    <ul class="step-nav" id="stepNav">
+      <li><a data-step="1" class="active"><span class="step-num">1</span>选择纠纷类型</a></li>
+      <li><a data-step="2"><span class="step-num">2</span>当事人信息</a></li>
+      <li><a data-step="3"><span class="step-num">3</span>纠纷事实</a></li>
+      <li><a data-step="4"><span class="step-num">4</span>协议条款</a></li>
+      <li><a data-step="5"><span class="step-num">5</span>履行信息</a></li>
+      <li><a data-step="6"><span class="step-num">6</span>预览与输出</a></li>
+      <li style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;"><a data-step="dossier"><span class="step-num">📋</span>全套卷宗生成</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      依据《人民调解法》第28-33条<br>司法部人民调解文书格式规范
+      <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,0.1);padding-top:10px;">
+        <button class="btn btn-sm" onclick="exportTemplates()" style="width:100%;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);margin-bottom:4px;font-size:12px;cursor:pointer;">📤 导出模板</button>
+        <button class="btn btn-sm" onclick="importTemplates()" style="width:100%;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);font-size:12px;cursor:pointer;">📥 导入模板</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 主内容区 -->
+  <main class="main-content" id="mainContent">
+    <!-- Step 1: 选择纠纷类型 -->
+    <div class="content-card step-panel" id="step1">
+      <h2 class="section-title">📝 选择纠纷类型</h2>
+      <p class="section-desc">请选择本次调解的纠纷类型，系统将自动加载对应的协议条款模板</p>
+      <div class="dispute-types" id="disputeTypes"></div>
+      <div class="btn-group">
+        <button class="btn btn-primary btn-lg" onclick="nextStep()">下一步 →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: 当事人信息 -->
+    <div class="content-card step-panel hidden" id="step2">
+      <h2 class="section-title">👥 当事人信息</h2>
+      <p class="section-desc">请填写协议书编号及各方当事人的基本信息。支持添加多方当事人</p>
+      <div class="form-group" style="max-width:400px;">
+        <label class="form-label">协议书编号 <span style="color:var(--text-secondary);font-weight:400;">（可选）</span></label>
+        <input type="text" class="form-input" id="protocolNumber" placeholder="如：×民调字（2025年）001号">
+        <p class="form-hint">格式示例：×民调字（年份）序号，可留空后续手写填写</p>
+      </div>
+      <div id="partiesContainer"></div>
+      <div class="btn-group" style="margin-top:16px;">
+        <button class="btn btn-outline btn-sm" onclick="addParty()">+ 添加当事人</button>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="prevStep()">← 上一步</button>
+        <button class="btn btn-primary" onclick="nextStep()">下一步 →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: 纠纷事实 -->
+    <div class="content-card step-panel hidden" id="step3">
+      <h2 class="section-title">📄 纠纷事实与争议事项</h2>
+      <p class="section-desc">请详细描述本次纠纷的基本情况。带 <span class="required" style="color:var(--danger)">*</span> 为必填项</p>
+      <div class="form-group">
+        <label class="form-label">纠纷主要事实、争议事项 <span class="required">*</span></label>
+        <div class="flex-center" style="margin-bottom:8px;">
+          <select class="form-select" id="factTemplateSelect" onchange="loadFactTemplate(this.value)" style="width:auto;min-width:200px;">
+            <option value="">— 选择事实模板 —</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="saveFactTemplate()" style="white-space:nowrap;">💾 保存当前为模板</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteFactTemplate()" style="white-space:nowrap;">✕ 删除模板</button>
+        </div>
+        <textarea class="form-textarea" id="disputeFacts" rows="6" placeholder="请描述纠纷发生的时间、地点、经过、起因等主要事实，以及各方当事人的诉求与分歧点..."></textarea>
+        <p class="form-hint">示例：2024年3月15日，申请人李某与邻居王某因楼道堆放杂物问题发生纠纷，王某将杂物堆放在公共楼道，影响李某正常通行。李某要求王某清理楼道杂物，恢复公共区域正常通行；王某认为楼道属于公共区域，自己有使用权...</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">各方责任（可选）</label>
+        <textarea class="form-textarea" id="disputeResponsibility" rows="2" placeholder="请描述各方当事人在纠纷中的责任划分..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">当事人申请事项（可选，用于《人民调解申请书》）</label>
+        <textarea class="form-textarea" id="applicationItems" rows="3" placeholder="请填写当事人在申请书中提出的具体请求事项，如：&#10;1. 要求被申请人支付拖欠工资人民币5000元&#10;2. 要求被申请人赔礼道歉&#10;..."></textarea>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="prevStep()">← 上一步</button>
+        <button class="btn btn-primary" onclick="nextStep()">下一步 →</button>
+      </div>
+    </div>
+
+    <!-- Step 4: 协议条款 -->
+    <div class="content-card step-panel hidden" id="step4">
+      <h2 class="section-title">📋 协议条款</h2>
+      <p class="section-desc">系统已根据纠纷类型预填模板条款，您可自由编辑、增删条款。编辑满意后可保存为自定义模板，下次使用时自动出现在纠纷类型列表中</p>
+      <div id="clausesContainer"></div>
+      <div class="btn-group" style="margin-top:12px;">
+        <button class="btn btn-outline btn-sm" onclick="addClause()">+ 添加条款</button>
+        <button class="btn btn-outline btn-sm" onclick="resetClauses()">🔄 重置为模板</button>
+        <button class="btn btn-outline btn-sm" onclick="saveAsTemplate()" style="color:var(--accent);border-color:var(--accent);">💾 保存为自定义模板</button>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="prevStep()">← 上一步</button>
+        <button class="btn btn-primary" onclick="nextStep()">下一步 →</button>
+      </div>
+    </div>
+
+    <!-- Step 5: 履行信息 -->
+    <div class="content-card step-panel hidden" id="step5">
+      <h2 class="section-title">📅 履行方式与时限</h2>
+      <p class="section-desc">请选择协议的履行方式和履行时限</p>
+      <div class="form-group">
+        <label class="form-label">履行方式 <span class="required">*</span></label>
+        <select class="form-select" id="fulfillMethod">
+          <option value="">请选择履行方式</option>
+          <option value="现金交付">现金交付</option>
+          <option value="银行转账">银行转账</option>
+          <option value="行为履行">行为履行</option>
+          <option value="分期履行">分期履行</option>
+          <option value="不作为">不作为</option>
+        </select>
+      </div>
+      <div class="form-group" id="fulfillDescGroup" style="display:none;">
+        <label class="form-label">履行方式详细描述 <span class="required">*</span></label>
+        <textarea class="form-textarea" id="fulfillDesc" rows="3" placeholder="请详细描述履行方式，如金额、账户信息、具体行为等..."></textarea>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div class="form-group">
+          <label class="form-label">履行起始日期</label>
+          <input type="date" class="form-input" id="fulfillStart">
+        </div>
+        <div class="form-group">
+          <label class="form-label">履行截止日期</label>
+          <input type="date" class="form-input" id="fulfillEnd">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">协议份数</label>
+        <input type="number" class="form-input" id="copyCount" min="2" value="3" style="width:120px;">
+        <p class="form-hint">当事人各一份，人民调解委员会留存一份（默认根据当事人数量自动计算）</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">调解委员会名称</label>
+        <input type="text" class="form-input" id="committeeName" placeholder="如：东城街道人民调解委员会" style="max-width:400px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">调解员姓名</label>
+        <input type="text" class="form-input" id="mediatorName" placeholder="调解员姓名" style="max-width:200px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">记录人姓名</label>
+        <input type="text" class="form-input" id="recorderName" placeholder="记录人姓名" style="max-width:200px;">
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="prevStep()">← 上一步</button>
+        <button class="btn btn-primary" onclick="nextStep()">下一步 → 预览</button>
+      </div>
+    </div>
+
+    <!-- Step 6: 预览与输出 -->
+    <div class="content-card step-panel hidden" id="step6">
+      <h2 class="section-title">📜 协议书预览</h2>
+      <p class="section-desc">请仔细核对以下协议书内容，确认无误后可进行打印、复制或导出操作</p>
+      <div class="preview-document" id="previewContent"></div>
+      <div class="btn-group" style="justify-content:center; margin-top:20px;">
+        <button class="btn btn-primary btn-lg no-print" onclick="copyText()">📋 复制文本</button>
+        <button class="btn btn-outline btn-lg no-print" onclick="doPrint()">🖨️ 打印</button>
+        <button class="btn btn-success btn-lg no-print" onclick="exportWord()">📥 导出Word</button>
+      </div>
+      <!-- 法律效力提示 -->
+      <div style="margin-top:24px; padding:16px; background:#fff8e1; border-radius:8px; border-left:4px solid var(--accent);" class="no-print">
+        <strong>⚖️ 法律效力提示</strong>
+        <p style="margin:8px 0 0 0; font-size:13px; color:#666;">
+          根据《中华人民共和国人民调解法》第31条，本协议具有法律约束力，当事人应当按照约定履行。<br>
+          根据第33条，双方当事人可在协议生效之日起<strong>30日内</strong>共同向人民法院申请<strong>司法确认</strong>，确认有效后可申请强制执行，且<strong>不收取费用</strong>。<br>
+          协议自各方当事人签名/盖章/按指印、调解员签名并加盖人民调解委员会印章之日起生效（第29条）。
+        </p>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="prevStep()">← 上一步</button>
+      </div>
+    </div>
+
+    <!-- 卷宗生成 -->
+    <div class="content-card step-panel hidden" id="stepDossier">
+      <h2 class="section-title">📋 全套卷宗文书生成</h2>
+      <p class="section-desc">复用协议书已录入的信息，选择需要的文书进行预览和输出</p>
+      <div class="dossier-tabs" id="dossierTabs"></div>
+      <div class="preview-document" id="dossierPreview" style="margin-top:16px;"></div>
+      <div class="btn-group" style="justify-content:center; margin-top:16px;" class="no-print">
+        <button class="btn btn-primary no-print" onclick="copyDossierText()">📋 复制当前文书</button>
+        <button class="btn btn-outline no-print" onclick="printDossier()">🖨️ 打印当前文书</button>
+        <button class="btn btn-success no-print" onclick="exportAllDossier()">📥 批量导出全部卷宗</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ===== 授权验证（授权码 + 过期时间 + 撤销检查） =====
+var AUTH_STORAGE_KEY = 'mediation_license_v2';
+var REVOKED_CODES_KEY = 'mediation_revoked_codes';
+var AUTH_CHANNEL_NAME = 'mediation_auth_channel';
+
+
+// BroadcastChannel 初始化（延迟到 DOMContentLoaded，避免影响脚本加载）
+var authChannel = null;
+function initAuthChannel() {
+  try {
+    authChannel = new BroadcastChannel(AUTH_CHANNEL_NAME);
+    authChannel.onmessage = function(e) {
+      console.log('[主页面] BroadcastChannel收到消息:', JSON.stringify(e.data));
+      if (e.data && e.data.type === 'revoke') {
+        var saved = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (saved) {
+          try {
+            var data = JSON.parse(saved);
+            if (data.code === e.data.code) {
+              forceLogout('授权码已被管理员撤销，请重新验证');
+            }
+          } catch(ex) {}
+        }
+      }
+    };
+    console.log('[主页面] BroadcastChannel初始化成功');
+  } catch(e) {
+    console.log('[主页面] BroadcastChannel不可用:', e.message);
+  }
+}
+
+// UTF-8 编解码
+function toUTF8Bytes(str) {
+  var bytes = [];
+  for (var i = 0; i < str.length; i++) {
+    var c = str.charCodeAt(i);
+    if (c < 0x80) { bytes.push(c); }
+    else if (c < 0x800) { bytes.push(0xC0 | (c >> 6)); bytes.push(0x80 | (c & 0x3F)); }
+    else if (c < 0x10000) { bytes.push(0xE0 | (c >> 12)); bytes.push(0x80 | ((c >> 6) & 0x3F)); bytes.push(0x80 | (c & 0x3F)); }
+    else { bytes.push(0xF0 | (c >> 18)); bytes.push(0x80 | ((c >> 12) & 0x3F)); bytes.push(0x80 | ((c >> 6) & 0x3F)); bytes.push(0x80 | (c & 0x3F)); }
+  }
+  return bytes;
+}
+function fromUTF8Bytes(bytes) {
+  var result = '', i = 0;
+  while (i < bytes.length) {
+    var c = bytes[i], charLen;
+    if (c < 0x80) charLen = 1;
+    else if ((c & 0xE0) === 0xC0) charLen = 2;
+    else if ((c & 0xF0) === 0xE0) charLen = 3;
+    else charLen = 4;
+    if (i + charLen > bytes.length) break;
+    var cp;
+    if (charLen === 1) cp = c;
+    else if (charLen === 2) cp = ((c & 0x1F) << 6) | (bytes[i + 1] & 0x3F);
+    else if (charLen === 3) cp = ((c & 0x0F) << 12) | ((bytes[i + 1] & 0x3F) << 6) | (bytes[i + 2] & 0x3F);
+    else cp = ((c & 0x07) << 18) | ((bytes[i + 1] & 0x3F) << 12) | ((bytes[i + 2] & 0x3F) << 6) | (bytes[i + 3] & 0x3F);
+    result += String.fromCharCode(cp);
+    i += charLen;
+  }
+  return result;
+}
+
+// Base64
+function base64Encode(bytes) {
+  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  var result = '', i = 0;
+  while (i < bytes.length) {
+    var a = bytes[i] || 0, b = (i + 1 < bytes.length) ? bytes[i + 1] : 0, c = (i + 2 < bytes.length) ? bytes[i + 2] : 0;
+    result += chars[a >> 2] + chars[((a & 3) << 4) | (b >> 4)];
+    result += (i + 1 < bytes.length) ? chars[((b & 15) << 2) | (c >> 6)] : '=';
+    result += (i + 2 < bytes.length) ? chars[c & 63] : '=';
+    i += 3;
+  }
+  return result;
+}
+function base64Decode(str) {
+  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  var result = [], i = 0;
+  while (i < str.length) {
+    var c0 = str[i] || 'A', c1 = str[i + 1] || 'A', c2 = str[i + 2] || 'A', c3 = str[i + 3] || 'A';
+    var a = chars.indexOf(c0), b = chars.indexOf(c1), c = chars.indexOf(c2), d = chars.indexOf(c3);
+    result.push((a << 2) | (b >> 4));
+    if (c2 !== '=') result.push(((b & 15) << 4) | (c >> 2));
+    if (c3 !== '=') result.push(((c & 3) << 6) | d);
+    i += 4;
+  }
+  return result;
+}
+
+// 加解密
+function authEncode(str) {
+  var key = 'Mediation2025!';
+  var bytes = toUTF8Bytes(str);
+  for (var i = 0; i < bytes.length; i++) { bytes[i] = (bytes[i] ^ key.charCodeAt(i % key.length)) & 0xFF; }
+  return base64Encode(bytes);
+}
+function authDecode(encoded) {
+  try {
+    var key = 'Mediation2025!';
+    var bytes = base64Decode(encoded);
+    for (var i = 0; i < bytes.length; i++) { bytes[i] = (bytes[i] ^ key.charCodeAt(i % key.length)) & 0xFF; }
+    return fromUTF8Bytes(bytes);
+  } catch(e) { return null; }
+}
+
+// 检查授权码是否已被撤销
+function isCodeRevoked(code) {
+  try {
+    var revoked = JSON.parse(localStorage.getItem(REVOKED_CODES_KEY) || '[]');
+    return revoked.indexOf(code) !== -1;
+  } catch(e) { return false; }
+}
+
+// 验证授权码
+function verifyCode() {
+  var input = document.getElementById('authCode');
+  var errEl = document.getElementById('authError');
+  if (!input || !errEl) return;
+  var code = input.value.trim();
+
+  if (!code) { errEl.textContent = '请输入授权码'; return; }
+
+  var decoded = authDecode(code);
+  if (!decoded) {
+    errEl.textContent = '授权码无效，请检查后重试';
+    input.classList.add('error');
+    setTimeout(function() { input.classList.remove('error'); }, 400);
+    return;
+  }
+
+  var payload;
+  try { payload = JSON.parse(decoded); } catch(e) {
+    errEl.textContent = '授权码格式错误'; return;
+  }
+
+  var now = new Date();
+  var expireDate = new Date(payload.expire + 'T23:59:59');
+
+  if (now > expireDate) {
+    errEl.textContent = '授权码已过期（有效期至 ' + payload.expire + '），请联系管理员续期';
+    input.classList.add('error');
+    setTimeout(function() { input.classList.remove('error'); }, 400);
+    return;
+  }
+
+  // 检查是否已被管理员撤销
+  if (isCodeRevoked(code)) {
+    errEl.textContent = '该授权码已被管理员撤销，请联系管理员重新获取';
+    input.classList.add('error');
+    setTimeout(function() { input.classList.remove('error'); }, 400);
+    return;
+  }
+
+  // 验证通过
+  authInvalidated = false;
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
+    code: code,
+    expire: payload.expire,
+    user: payload.user,
+    verifiedAt: new Date().toISOString()
+  }));
+
+  var overlay = document.getElementById('authOverlay');
+  if (overlay) overlay.classList.add('hidden');
+  // 恢复底层应用容器交互
+  var appContainer = document.querySelector('.app-container');
+  if (appContainer) {
+    appContainer.style.pointerEvents = '';
+    appContainer.style.opacity = '';
+    appContainer.style.filter = '';
+  }
+  var expireEl = document.getElementById('expireDate');
+  if (expireEl) expireEl.textContent = payload.expire;
+  var infoEl = document.getElementById('authInfo');
+  if (infoEl) infoEl.style.display = 'block';
+  startAuthPolling();
+  initApp();
+}
+
+// 检查已保存的授权
+function checkSavedAuth() {
+  var saved = localStorage.getItem(AUTH_STORAGE_KEY);
+  if (!saved) return false;
+
+  try {
+    var data = JSON.parse(saved);
+    var now = new Date();
+    var expireDate = new Date(data.expire + 'T23:59:59');
+    if (now > expireDate) { localStorage.removeItem(AUTH_STORAGE_KEY); return false; }
+    // 检查是否被撤销
+    var revoked = JSON.parse(localStorage.getItem(REVOKED_CODES_KEY) || '[]');
+    if (revoked.indexOf(data.code) !== -1) {
+      localStorage.removeItem(AUTH_STORAGE_KEY); return false;
+    }
+    return true;
+  } catch(e) { localStorage.removeItem(AUTH_STORAGE_KEY); return false; }
+}
+
+// 操作守卫：每次用户操作前检查授权状态，过期/撤销则自动登出
+function ensureAuth() {
+  if (!checkSavedAuth()) {
+    forceLogout('授权码已过期或被撤销，请联系管理员重新授权');
+    return false;
+  }
+  return true;
+}
+
+// 授权是否已失效（用于全局拦截）
+var authInvalidated = false;
+
+// 强制登出：清除授权并显示验证遮罩
+function forceLogout(msg) {
+  authInvalidated = true;
+  stopAuthPolling();
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  var overlay = document.getElementById('authOverlay');
+  var errEl = document.getElementById('authError');
+  if (overlay) overlay.classList.remove('hidden');
+  if (errEl) {
+    errEl.textContent = msg || '授权码已过期，请联系管理员重新授权';
+    errEl.style.color = '#c0392b';
+  }
+  var input = document.getElementById('authCode');
+  if (input) { input.value = ''; input.focus(); }
+  // 禁用底层应用容器所有交互
+  var appContainer = document.querySelector('.app-container');
+  if (appContainer) {
+    appContainer.style.pointerEvents = 'none';
+    appContainer.style.opacity = '0.3';
+    appContainer.style.filter = 'blur(4px)';
+  }
+  window.scrollTo(0, 0);
+  showToast(msg || '授权码已过期，请联系管理员重新授权', 'error');
+}
+
+// 供管理员面板通过 window.opener 直接调用，确保跨窗口撤销生效
+function forceLogoutByAdmin(revokedCode) {
+  // 检查当前登录用户的授权码是否匹配被撤销的授权码
+  var saved = localStorage.getItem(AUTH_STORAGE_KEY);
+  if (saved) {
+    try {
+      var data = JSON.parse(saved);
+      if (data.code === revokedCode) {
+        forceLogout('授权码已被管理员撤销，请重新验证');
+      }
+    } catch(e) {}
+  }
+  // 不论当前用户是否匹配，都刷新 localStorage 中的撤销列表
+  // 这样即使 opener 通知失败，轮询也能检测到
+}
+
+
+// 定时轮询：每1秒检查一次授权状态（快速响应撤销）
+var authPollTimer = null;
+function startAuthPolling() {
+  if (authPollTimer) clearInterval(authPollTimer);
+  authPollTimer = setInterval(function() {
+    if (authInvalidated) return;
+    var saved = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!saved) { forceLogout('授权码已过期或被撤销，请联系管理员重新授权'); return; }
+    try {
+      var data = JSON.parse(saved);
+      var now = new Date();
+      var expireDate = new Date(data.expire + 'T23:59:59');
+      if (now > expireDate) { forceLogout('授权码已过期，请联系管理员重新授权'); return; }
+      var revoked = JSON.parse(localStorage.getItem(REVOKED_CODES_KEY) || '[]');
+      if (revoked.indexOf(data.code) !== -1) {
+        forceLogout('授权码已被管理员撤销，请重新验证');
+      }
+    } catch(e) { forceLogout('授权验证失败，请重新验证'); }
+  }, 1000);
+}
+function stopAuthPolling() {
+  if (authPollTimer) { clearInterval(authPollTimer); authPollTimer = null; }
+}
+
+// 跨Tab实时检测：监听localStorage变化（同一浏览器不同Tab之间）
+window.addEventListener('storage', function(e) {
+  if (e.key === REVOKED_CODES_KEY || e.key === AUTH_STORAGE_KEY) {
+    if (!authInvalidated && !checkSavedAuth()) {
+      forceLogout('授权码已被管理员撤销，请重新验证');
+    }
+  }
+});
+
+// 全局事件拦截：在遮罩显示时阻止所有底层页面交互
+document.addEventListener('click', function(e) {
+  if (authInvalidated) {
+    var overlay = document.getElementById('authOverlay');
+    if (overlay && !overlay.classList.contains('hidden')) {
+      // 允许点击遮罩内的元素
+      if (overlay.contains(e.target)) return;
+      // 阻止底层页面点击
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      showToast('授权码已过期或被撤销，请重新验证', 'error');
+    }
+  }
+}, true);
+
+document.addEventListener('keydown', function(e) {
+  if (authInvalidated) {
+    var overlay = document.getElementById('authOverlay');
+    if (overlay && !overlay.classList.contains('hidden')) {
+      // 允许在授权码输入框中输入
+      if (e.target && e.target.id === 'authCode') return;
+      // 阻止底层页面键盘操作
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    }
+  }
+}, true);
+
+// 阻止遮罩层下方的表单获得焦点
+document.addEventListener('focusin', function(e) {
+  if (authInvalidated) {
+    var overlay = document.getElementById('authOverlay');
+    if (overlay && !overlay.classList.contains('hidden')) {
+      if (e.target && e.target.id === 'authCode') return;
+      if (overlay.contains(e.target)) return;
+      // 强制焦点回到授权码输入框
+      var input = document.getElementById('authCode');
+      if (input) input.focus();
+    }
+  }
+}, true);
+
+// 阻止遮罩层下方的内容被选中
+document.addEventListener('selectstart', function(e) {
+  if (authInvalidated) {
+    var overlay = document.getElementById('authOverlay');
+    if (overlay && !overlay.classList.contains('hidden')) {
+      if (overlay.contains(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+}, true);
+
+// 阻止右键菜单（遮罩显示时）
+document.addEventListener('contextmenu', function(e) {
+  if (authInvalidated) {
+    var overlay = document.getElementById('authOverlay');
+    if (overlay && !overlay.classList.contains('hidden')) {
+      if (overlay.contains(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+}, true);
+
+// ===== 数据模型 =====
+const state = {
+  currentStep: 1,
+  disputeType: '',
+  disputeTypeName: '',
+  protocolNumber: '',
+  parties: [],
+  disputeFacts: '',
+  disputeResponsibility: '',
+  applicationItems: '',
+  clauses: [],
+  fulfillMethod: '',
+  fulfillDesc: '',
+  fulfillStart: '',
+  fulfillEnd: '',
+  copyCount: 3,
+  committeeName: '东城街道人民调解委员会',
+  mediatorName: '',
+  recorderName: '',
+  currentDossier: 0
+};
+
+// ===== 纠纷类型模板 =====
+const disputeTemplates = {
+  'neighborhood': {
+    name: '邻里纠纷',
+    icon: '🏘️',
+    facts: '相邻关系中的噪音/通行/排水/边界争议',
+    clauses: [
+      '双方确认因[相邻关系/噪音/通行/排水/边界]问题发生纠纷。',
+      '[当事人A]承诺立即停止侵害行为，排除对[当事人B]的妨碍。',
+      '[当事人A]赔偿[当事人B]损失共计人民币______元。',
+      '[当事人A]承诺于______年______月______日前恢复原状/排除妨碍。',
+      '双方承诺今后和睦相处，互谅互让，不再因此事发生纠纷。'
+    ],
+    laws: '《民法典》第288-296条（相邻关系）'
+  },
+  'marriage': {
+    name: '婚姻家庭纠纷',
+    icon: '👨‍👩‍👧',
+    facts: '离婚、子女抚养、赡养、遗产继承',
+    clauses: [
+      '双方确认自愿达成以下协议事项。',
+      '关于子女抚养：[子女姓名]由[当事人]直接抚养。',
+      '[当事人]每月支付抚养费人民币______元，于每月______日前支付。',
+      '[当事人]享有探视权，具体探视安排为______。',
+      '关于赡养：[当事人]每月支付赡养费人民币______元。',
+      '关于财产分割：双方确认以下财产分割方案______。'
+    ],
+    laws: '《民法典》婚姻家庭编第1040-1118条'
+  },
+  'contract': {
+    name: '合同纠纷',
+    icon: '📝',
+    facts: '违约、瑕疵履行、提前履行、解除合同',
+    clauses: [
+      '双方确认因[合同名称]的履行发生争议。',
+      '[当事人]确认存在违约行为，同意支付违约金人民币______元。',
+      '[当事人]承诺继续履行合同义务，于______年______月______日前完成履行。',
+      '双方同意[解除合同/退货退款]，具体安排为______。',
+      '双方确认本协议履行完毕后，原合同项下权利义务终止。'
+    ],
+    laws: '《民法典》合同编'
+  },
+  'labor': {
+    name: '劳动纠纷',
+    icon: '💼',
+    facts: '拖欠工资、拒付加班费、工伤赔偿',
+    clauses: [
+      '双方确认存在劳动关系，[用人单位]拖欠[劳动者]工资/加班费。',
+      '[用人单位]同意支付拖欠工资共计人民币______元。',
+      '[用人单位]同意支付加班费共计人民币______元。',
+      '[用人单位]同意支付经济补偿金人民币______元。',
+      '[用人单位]同意支付工伤赔偿共计人民币______元（含医疗费、伤残补助金等）。',
+      '上述款项于______年______月______日前一次性付清。'
+    ],
+    laws: '《劳动法》第44条、《劳动合同法》'
+  },
+  'tort': {
+    name: '侵权赔偿纠纷',
+    icon: '⚡',
+    facts: '人身伤害、财产损害、名誉侵权',
+    clauses: [
+      '双方确认[当事人]对[受害人]实施了侵权行为。',
+      '[侵权人]同意赔偿[受害人]医疗费人民币______元。',
+      '[侵权人]同意赔偿[受害人]误工费人民币______元。',
+      '[侵权人]同意赔偿[受害人]财产损失人民币______元。',
+      '[侵权人]同意赔偿[受害人]精神损害抚慰金人民币______元。',
+      '[侵权人]向[受害人]赔礼道歉，消除影响。',
+      '以上赔偿款项合计人民币______元，于______年______月______日前一次性付清。'
+    ],
+    laws: '《民法典》侵权责任编'
+  },
+  'housing': {
+    name: '房屋宅基地纠纷',
+    icon: '🏠',
+    facts: '共有权争议、擅自改建、宅基地边界',
+    clauses: [
+      '双方确认因[房屋/宅基地]的[共有权/改建/边界]问题发生纠纷。',
+      '[当事人]承诺停止[擅自改建/侵占]行为。',
+      '[当事人]同意于______年______月______日前恢复原状。',
+      '[当事人]赔偿[当事人]损失人民币______元。',
+      '双方确认[房屋/宅基地]使用权的归属为______。'
+    ],
+    laws: '《民法典》第301条'
+  },
+  'medical': {
+    name: '医疗纠纷',
+    icon: '🏥',
+    facts: '误诊、医疗事故、延误治疗',
+    clauses: [
+      '双方确认因[误诊/医疗事故/延误治疗]发生纠纷。',
+      '[医疗机构]同意赔偿[患者]医疗费人民币______元。',
+      '[医疗机构]同意赔偿[患者]后续治疗费人民币______元。',
+      '[医疗机构]同意赔偿[患者]误工费、护理费等共计人民币______元。',
+      '以上赔偿款项于______年______月______日前一次性付清。'
+    ],
+    laws: '《医疗事故处理条例》'
+  },
+  'property': {
+    name: '物业管理纠纷',
+    icon: '🏢',
+    facts: '物业服务瑕疵、物业费争议',
+    clauses: [
+      '双方确认因[物业服务/物业费]问题发生纠纷。',
+      '[物业公司]承诺改进以下物业服务：______。',
+      '[业主]同意支付拖欠物业费人民币______元。',
+      '[物业公司]同意减免物业费人民币______元。',
+      '双方确认今后物业费标准为______。'
+    ],
+    laws: '《民法典》合同编物业服务合同'
+  },
+  'traffic': {
+    name: '交通事故纠纷',
+    icon: '🚗',
+    facts: '交通事故损害赔偿',
+    clauses: [
+      '双方确认于______年______月______日发生交通事故。',
+      '[责任方]同意赔偿[受害方]车辆维修费人民币______元。',
+      '[责任方]同意赔偿[受害方]医疗费人民币______元。',
+      '[责任方]同意赔偿[受害方]误工费人民币______元。',
+      '以上赔偿款项合计人民币______元，于______年______月______日前一次性付清。'
+    ],
+    laws: '《民法典》侵权责任编'
+  },
+  'other': {
+    name: '其他纠纷',
+    icon: '📋',
+    facts: '自定义纠纷类型',
+    clauses: [
+      '双方确认因______问题发生纠纷。',
+      '[当事人]同意______。',
+      '[当事人]同意______。',
+      '双方确认以上协议内容，自愿履行。'
+    ],
+    laws: '《民法典》《人民调解法》等相关法律法规'
+  }
+};
+
+// ===== 初始化 =====
+function initApp() {
+  renderDisputeTypes();
+  initParties();
+  updateCopyCount();
+  renderDossierTabs();
+  renderFactTemplateSelect();
+}
+
+// ===== 渲染纠纷类型 =====
+function renderDisputeTypes() {
+  const container = document.getElementById('disputeTypes');
+  const custom = getCustomTemplates();
+
+  container.innerHTML = Object.entries(disputeTemplates).map(([key, t]) => {
+    const tpl = custom[key] || t;
+    const isCustom = !!custom[key];
+    return `
+    <div class="dispute-card ${state.disputeType === key ? 'selected' : ''}" onclick="selectDisputeType('${key}')" data-type="${key}" style="position:relative;">
+      <div class="icon">${tpl.icon}</div>
+      <div class="name">${tpl.name}</div>
+      ${isCustom ? `<div style="font-size:11px;color:var(--accent);margin-top:2px;">⭐ 自定义模板</div>` : ''}
+      ${isCustom ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCustomTemplate('${key}')" style="position:absolute;top:6px;right:6px;padding:1px 6px;font-size:10px;" title="删除自定义模板">✕</button>` : ''}
+    </div>
+  `}).join('');
+}
+
+function selectDisputeType(key) {
+  if (!ensureAuth()) return;
+  state.disputeType = key;
+  const tpl = getTemplate(key);
+  state.disputeTypeName = tpl.name;
+  renderDisputeTypes();
+  // 自动预填协议条款
+  state.clauses = [...tpl.clauses];
+  renderClauses();
+  // 预填事实提示
+  if (!state.disputeFacts) {
+    document.getElementById('disputeFacts').placeholder = `典型事实要素：${tpl.facts}\n\n请在此描述具体纠纷事实...`;
+  }
+}
+
+// ===== 当事人管理 =====
+function initParties() {
+  if (state.parties.length === 0) {
+    state.parties = [
+      { id: 1, type: 'applicant', name: '', gender: '', ethnicity: '汉族', age: '', idNumber: '', occupation: '普工', phone: '', address: '', isOrg: false, establishDate: '', extraInfo: '' },
+      { id: 2, type: 'respondent', name: '', gender: '', ethnicity: '汉族', age: '', idNumber: '', occupation: '普工', phone: '', address: '', isOrg: false, establishDate: '', extraInfo: '' }
+    ];
+  }
+  renderParties();
+}
+
+function addParty() {
+  if (!ensureAuth()) return;
+  const id = Math.max(0, ...state.parties.map(p => p.id)) + 1;
+  state.parties.push({
+    id, type: 'third', name: '', gender: '', ethnicity: '汉族', age: '', idNumber: '', occupation: '普工', phone: '', address: '', isOrg: false, establishDate: '', extraInfo: ''
+  });
+  renderParties();
+  updateCopyCount();
+}
+
+function removeParty(id) {
+  if (!ensureAuth()) return;
+  if (state.parties.length <= 2) return;
+  state.parties = state.parties.filter(p => p.id !== id);
+  renderParties();
+  updateCopyCount();
+}
+
+function renderParties() {
+  const container = document.getElementById('partiesContainer');
+  const typeLabels = { applicant: '申请人', respondent: '被申请人', third: '第三方' };
+  const badgeClasses = { applicant: 'badge-applicant', respondent: 'badge-respondent', third: 'badge-third' };
+
+  container.innerHTML = state.parties.map((p, idx) => `
+    <div class="party-card" data-id="${p.id}">
+      <div class="party-card-header">
+        <h4>
+          当事人 ${idx + 1}
+          <span class="party-type-badge ${badgeClasses[p.type]}">${typeLabels[p.type]}</span>
+          ${p.isOrg ? '<span class="party-type-badge" style="background:#f3e8ff;color:#6b21a8;">法人/组织</span>' : ''}
+        </h4>
+        <div class="flex-center">
+          <select onchange="updatePartyType(${p.id}, this.value)" class="form-select" style="width:auto;padding:4px 8px;font-size:12px;">
+            <option value="applicant" ${p.type==='applicant'?'selected':''}>申请人</option>
+            <option value="respondent" ${p.type==='respondent'?'selected':''}>被申请人</option>
+            <option value="third" ${p.type==='third'?'selected':''}>第三方</option>
+          </select>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+            <input type="checkbox" ${p.isOrg?'checked':''} onchange="toggleOrg(${p.id}, this.checked)"> 法人/组织
+          </label>
+          ${state.parties.length > 2 ? `<button class="btn btn-danger btn-sm" onclick="removeParty(${p.id})" style="padding:2px 8px;font-size:11px;">✕</button>` : ''}
+        </div>
+      </div>
+      ${p.isOrg ? `
+      <!-- 法人/组织表单 -->
+      <div class="party-grid">
+        <div class="form-group">
+          <label class="form-label">单位名称 <span class="required">*</span></label>
+          <input type="text" class="form-input" value="${escHtml(p.name)}" onchange="updateParty(${p.id},'name',this.value)" placeholder="请输入单位全称">
+        </div>
+        <div class="form-group">
+          <label class="form-label">类型</label>
+          <input type="text" class="form-input" value="${escHtml(p.ethnicity)}" onchange="updateParty(${p.id},'ethnicity',this.value)" placeholder="如：有限责任公司、股份有限公司、事业单位等">
+        </div>
+        <div class="form-group">
+          <label class="form-label">法定代表人</label>
+          <input type="text" class="form-input" value="${escHtml(p.occupation)}" onchange="updateParty(${p.id},'occupation',this.value)" placeholder="如：张三">
+        </div>
+        <div class="form-group">
+          <label class="form-label">成立日期</label>
+          <input type="text" class="form-input" value="${escHtml(p.establishDate || '')}" onchange="updateParty(${p.id},'establishDate',this.value)" placeholder="如：2010年5月1日">
+        </div>
+        <div class="form-group">
+          <label class="form-label">住所</label>
+          <input type="text" class="form-input" value="${escHtml(p.address)}" onchange="updateParty(${p.id},'address',this.value)" placeholder="如：北京市XX区XX路XX号">
+        </div>
+        <div class="form-group">
+          <label class="form-label">统一社会信用代码</label>
+          <input type="text" class="form-input" value="${escHtml(p.idNumber || '')}" onchange="updateParty(${p.id},'idNumber',this.value)" placeholder="如：91110000XXXXXXXXXX">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:8px;">
+        <label class="form-label">补充资料 <span style="color:var(--text-secondary);font-weight:400;">（可选，如经营范围、资质等）</span></label>
+        <textarea class="form-textarea" rows="2" onchange="updateParty(${p.id},'extraInfo',this.value)" placeholder="如：经营范围：建筑工程施工总承包；注册资本：1000万元…">${escHtml(p.extraInfo || '')}</textarea>
+      </div>
+      ` : `
+      <!-- 自然人表单 -->
+      <div class="party-grid">
+        <div class="form-group">
+          <label class="form-label">姓名 <span class="required">*</span></label>
+          <input type="text" class="form-input" value="${escHtml(p.name)}" onchange="updateParty(${p.id},'name',this.value)" placeholder="请输入姓名">
+        </div>
+        <div class="form-group">
+          <label class="form-label">性别</label>
+          <select class="form-select" onchange="updateParty(${p.id},'gender',this.value)">
+            <option value="">请选择</option>
+            <option value="男" ${p.gender==='男'?'selected':''}>男</option>
+            <option value="女" ${p.gender==='女'?'selected':''}>女</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">民族</label>
+          <input type="text" class="form-input" value="${escHtml(p.ethnicity)}" onchange="updateParty(${p.id},'ethnicity',this.value)" placeholder="如：汉族">
+        </div>
+        <div class="form-group">
+          <label class="form-label">年龄</label>
+          <input type="number" class="form-input" value="${p.age}" onchange="updateParty(${p.id},'age',this.value)" placeholder="年龄" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">身份证号码</label>
+          <input type="text" class="form-input" value="${escHtml(p.idNumber || '')}" onchange="updateParty(${p.id},'idNumber',this.value)" placeholder="如：110101199001011234">
+        </div>
+        <div class="form-group">
+          <label class="form-label">职业或职务</label>
+          <input type="text" class="form-input" value="${escHtml(p.occupation)}" onchange="updateParty(${p.id},'occupation',this.value)" placeholder="如：公司职员">
+        </div>
+        <div class="form-group">
+          <label class="form-label">联系方式</label>
+          <input type="text" class="form-input" value="${escHtml(p.phone)}" onchange="updateParty(${p.id},'phone',this.value)" placeholder="电话/手机">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:8px;">
+        <label class="form-label">单位或住址</label>
+        <input type="text" class="form-input" value="${escHtml(p.address)}" onchange="updateParty(${p.id},'address',this.value)" placeholder="请输入单位或住址">
+      </div>
+      `}
+    </div>
+  `).join('');
+}
+
+function updateParty(id, field, value) {
+  if (!ensureAuth()) return;
+  const party = state.parties.find(p => p.id === id);
+  if (!party) return;
+  party[field] = value;
+  // 当修改身份证号码时，自动计算年龄
+  if (field === 'idNumber' && !party.isOrg && value && value.length === 18) {
+    const birthStr = value.substring(6, 14);
+    const birthYear = parseInt(birthStr.substring(0, 4));
+    const birthMonth = parseInt(birthStr.substring(4, 6)) - 1;
+    const birthDay = parseInt(birthStr.substring(6, 8));
+    if (birthYear >= 1900 && birthMonth >= 0 && birthMonth < 12 && birthDay >= 1 && birthDay <= 31) {
+      const birthDate = new Date(birthYear, birthMonth, birthDay);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      if (today.getMonth() < birthDate.getMonth() || (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      party.age = age;
+      // 更新DOM中的年龄输入框
+      const partyEl = document.querySelector(`.party-card[data-id="${id}"]`);
+      if (partyEl) {
+        const ageInput = partyEl.querySelector('input[type="number"]');
+        if (ageInput) ageInput.value = age;
+      }
+    }
+  }
+}
+
+function updatePartyType(id, value) {
+  if (!ensureAuth()) return;
+  const party = state.parties.find(p => p.id === id);
+  if (party) party.type = value;
+}
+
+function toggleOrg(id, checked) {
+  if (!ensureAuth()) return;
+  const party = state.parties.find(p => p.id === id);
+  if (party) { party.isOrg = checked; renderParties(); }
+}
+
+function updateCopyCount() {
+  state.copyCount = state.parties.length + 1;
+  document.getElementById('copyCount').value = state.copyCount;
+}
+
+// ===== 协议条款管理 =====
+function renderClauses() {
+  const container = document.getElementById('clausesContainer');
+  container.innerHTML = state.clauses.map((c, i) => `
+    <div class="clause-item">
+      <span class="clause-num">${toChineseNum(i + 1)}</span>
+      <input type="text" class="clause-input" value="${escHtml(c)}" onchange="updateClause(${i}, this.value)" placeholder="请输入协议条款...">
+      <button class="btn btn-danger btn-sm" onclick="removeClause(${i})" style="padding:2px 8px;">✕</button>
+    </div>
+  `).join('');
+}
+
+function updateClause(index, value) {
+  if (!ensureAuth()) return;
+  state.clauses[index] = value;
+}
+
+function addClause() {
+  if (!ensureAuth()) return;
+  state.clauses.push('');
+  renderClauses();
+}
+
+function removeClause(index) {
+  if (!ensureAuth()) return;
+  if (state.clauses.length <= 1) return;
+  state.clauses.splice(index, 1);
+  renderClauses();
+}
+
+function resetClauses() {
+  if (!ensureAuth()) return;
+  if (!state.disputeType) { showToast('请先在第一步选择纠纷类型', 'error'); return; }
+  const tpl = getTemplate(state.disputeType);
+  state.clauses = [...tpl.clauses];
+  renderClauses();
+  showToast('已重置为模板条款', 'success');
+}
+
+// ===== 自定义模板管理（localStorage持久化） =====
+const CUSTOM_TEMPLATES_KEY = 'mediation_custom_templates';
+
+function getCustomTemplates() {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_TEMPLATES_KEY) || '{}');
+  } catch(e) { return {}; }
+}
+
+function saveCustomTemplates(templates) {
+  localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(templates));
+}
+
+function getTemplate(typeKey) {
+  const custom = getCustomTemplates();
+  if (custom[typeKey]) return custom[typeKey];
+  return disputeTemplates[typeKey];
+}
+
+function saveAsTemplate() {
+  if (!ensureAuth()) return;
+  const validClauses = state.clauses.filter(c => c.trim());
+  if (validClauses.length === 0) { showToast('请至少填写一条条款后再保存', 'error'); return; }
+  if (!state.disputeType) { showToast('请先在第一步选择纠纷类型', 'error'); return; }
+
+  const name = prompt('请为这个自定义模板命名（留空则覆盖当前纠纷类型的默认模板）：', state.disputeTypeName || '');
+  if (name === null) return; // 用户取消
+
+  const custom = getCustomTemplates();
+  const key = state.disputeType;
+  const icon = disputeTemplates[key] ? disputeTemplates[key].icon : '📄';
+  const facts = disputeTemplates[key] ? disputeTemplates[key].facts : '';
+  const laws = disputeTemplates[key] ? disputeTemplates[key].laws : '';
+
+  custom[key] = {
+    name: name.trim() || disputeTemplates[key].name,
+    icon: icon,
+    facts: facts,
+    clauses: [...validClauses],
+    laws: laws,
+    isCustom: true
+  };
+
+  saveCustomTemplates(custom);
+  state.disputeTypeName = custom[key].name;
+  renderDisputeTypes();
+  showToast(`模板"${custom[key].name}"已保存，重新选择纠纷类型时可使用`, 'success');
+}
+
+function deleteCustomTemplate(typeKey) {
+  if (!ensureAuth()) return;
+  const custom = getCustomTemplates();
+  if (!custom[typeKey]) return;
+  if (!confirm(`确定删除自定义模板"${custom[typeKey].name}"？将恢复为系统默认模板。`)) return;
+  delete custom[typeKey];
+  saveCustomTemplates(custom);
+  if (state.disputeType === typeKey) {
+    state.clauses = [...disputeTemplates[typeKey].clauses];
+    renderClauses();
+  }
+  renderDisputeTypes();
+  showToast('已删除自定义模板，恢复为系统默认', 'success');
+}
+
+// ===== 模板导入/导出（跨电脑迁移） =====
+function exportTemplates() {
+  if (!ensureAuth()) return;
+  const custom = getCustomTemplates();
+  const keys = Object.keys(custom);
+  if (keys.length === 0) { showToast('没有自定义模板可导出，请先在第四步保存自定义模板', 'error'); return; }
+  const exportData = {
+    version: '3.0',
+    exportTime: new Date().toISOString(),
+    templates: custom
+  };
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `人民调解自定义模板_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`已导出 ${keys.length} 个自定义模板`, 'success');
+}
+
+function importTemplates() {
+  if (!ensureAuth()) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function() {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (!data.templates || typeof data.templates !== 'object') {
+          showToast('文件格式不正确，请选择通过"导出模板"功能生成的文件', 'error');
+          return;
+        }
+        const importCount = Object.keys(data.templates).length;
+        const existing = getCustomTemplates();
+        const merged = { ...existing, ...data.templates };
+        saveCustomTemplates(merged);
+        renderDisputeTypes();
+        // 如果当前纠纷类型有新的自定义模板，自动更新条款
+        if (state.disputeType && merged[state.disputeType]) {
+          state.clauses = [...merged[state.disputeType].clauses];
+          state.disputeTypeName = merged[state.disputeType].name;
+          renderClauses();
+        }
+        showToast(`成功导入 ${importCount} 个模板！已与现有模板合并`, 'success');
+      } catch(err) {
+        showToast('文件解析失败，请确认选择了正确的JSON文件', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ===== 纠纷事实模板管理 =====
+const FACT_TEMPLATES_KEY = 'mediation_fact_templates';
+
+function getFactTemplates() {
+  try {
+    return JSON.parse(localStorage.getItem(FACT_TEMPLATES_KEY) || '[]');
+  } catch(e) { return []; }
+}
+
+function saveFactTemplates(templates) {
+  localStorage.setItem(FACT_TEMPLATES_KEY, JSON.stringify(templates));
+}
+
+function renderFactTemplateSelect() {
+  const select = document.getElementById('factTemplateSelect');
+  if (!select) return;
+  const templates = getFactTemplates();
+  select.innerHTML = '<option value="">— 选择事实模板 —</option>' +
+    templates.map((t, i) => `<option value="${i}">${escHtml(t.name)}</option>`).join('');
+}
+
+function loadFactTemplate(index) {
+  if (!ensureAuth()) return;
+  if (index === '') return;
+  const templates = getFactTemplates();
+  const tpl = templates[parseInt(index)];
+  if (tpl) {
+    document.getElementById('disputeFacts').value = tpl.content;
+    state.disputeFacts = tpl.content;
+    showToast(`已加载模板"${tpl.name}"`, 'success');
+  }
+}
+
+function saveFactTemplate() {
+  if (!ensureAuth()) return;
+  const content = state.disputeFacts.trim();
+  if (!content) { showToast('请先填写纠纷事实内容再保存模板', 'error'); return; }
+  const name = prompt('请为这个事实模板命名：', '');
+  if (name === null || !name.trim()) return;
+  const templates = getFactTemplates();
+  templates.push({ name: name.trim(), content: content });
+  saveFactTemplates(templates);
+  renderFactTemplateSelect();
+  showToast(`事实模板"${name.trim()}"已保存`, 'success');
+}
+
+function deleteFactTemplate() {
+  if (!ensureAuth()) return;
+  const select = document.getElementById('factTemplateSelect');
+  const index = select.value;
+  if (index === '') { showToast('请先选择一个模板再删除', 'error'); return; }
+  const templates = getFactTemplates();
+  const tpl = templates[parseInt(index)];
+  if (!confirm(`确定删除事实模板"${tpl.name}"？`)) return;
+  templates.splice(parseInt(index), 1);
+  saveFactTemplates(templates);
+  renderFactTemplateSelect();
+  showToast(`已删除模板"${tpl.name}"`, 'success');
+}
+
+// ===== 步骤导航 =====
+function goToStep(step) {
+  if (!ensureAuth()) return;
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.add('hidden'));
+  document.querySelectorAll('#stepNav a').forEach(a => a.classList.remove('active'));
+
+  const panelId = step === 'dossier' ? 'stepDossier' : `step${step}`;
+  const panel = document.getElementById(panelId);
+  if (panel) panel.classList.remove('hidden');
+
+  const navLink = document.querySelector(`#stepNav a[data-step="${step}"]`);
+  if (navLink) navLink.classList.add('active');
+
+  state.currentStep = step;
+
+  if (step === 5) {
+    const cmtInput = document.getElementById('committeeName');
+    if (cmtInput && !cmtInput.value) cmtInput.value = state.committeeName;
+  }
+  if (step === 6) renderPreview();
+  if (step === 'dossier') renderDossierPreview();
+}
+
+function nextStep() {
+  if (!ensureAuth()) return;
+  if (!validateStep(state.currentStep)) return;
+
+  if (state.currentStep === 1) {
+    if (!state.disputeType) { showToast('请先选择纠纷类型', 'error'); return; }
+    goToStep(2);
+  } else if (state.currentStep === 2) {
+    const valid = state.parties.every(p => p.name.trim());
+    if (!valid) { showToast('请填写所有当事人的姓名/名称', 'error'); return; }
+    goToStep(3);
+  } else if (state.currentStep === 3) {
+    if (!state.disputeFacts.trim()) { showToast('请填写纠纷主要事实、争议事项', 'error'); return; }
+    goToStep(4);
+  } else if (state.currentStep === 4) {
+    const valid = state.clauses.every(c => c.trim());
+    if (!valid) { showToast('请填写所有协议条款', 'error'); return; }
+    goToStep(5);
+  } else if (state.currentStep === 5) {
+    if (!state.fulfillMethod) { showToast('请选择履行方式', 'error'); return; }
+    if (!state.fulfillDesc.trim()) { showToast('请填写履行方式详细描述', 'error'); return; }
+    updateCopyCount();
+    goToStep(6);
+  }
+
+  // 更新步骤完成状态
+  updateStepNav();
+}
+
+function prevStep() {
+  if (!ensureAuth()) return;
+  const steps = [1, 2, 3, 4, 5, 6];
+  const idx = steps.indexOf(state.currentStep);
+  if (idx > 0) goToStep(steps[idx - 1]);
+  else if (state.currentStep === 'dossier') goToStep(6);
+}
+
+function updateStepNav() {
+  document.querySelectorAll('#stepNav a').forEach(a => {
+    const s = parseInt(a.dataset.step);
+    if (s && s < state.currentStep) a.classList.add('completed');
+  });
+}
+
+function validateStep(step) { return true; }
+
+// ===== 事件监听 =====
+document.addEventListener('DOMContentLoaded', function() {
+  // 初始化跨窗口通信
+  initAuthChannel();
+
+  // 授权码输入框回车事件
+  var codeInput = document.getElementById('authCode');
+  if (codeInput) {
+    codeInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') verifyCode();
+    });
+  }
+
+  // 检查已保存的授权
+  if (checkSavedAuth()) {
+    authInvalidated = false;
+    var overlay = document.getElementById('authOverlay');
+    if (overlay) overlay.classList.add('hidden');
+    // 恢复底层应用容器交互
+    var appContainer = document.querySelector('.app-container');
+    if (appContainer) {
+      appContainer.style.pointerEvents = '';
+      appContainer.style.opacity = '';
+      appContainer.style.filter = '';
+    }
+    var expireEl = document.getElementById('expireDate');
+    if (expireEl) {
+      try {
+        var saved = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY));
+        if (saved) expireEl.textContent = saved.expire;
+      } catch(e) {}
+    }
+    var infoEl = document.getElementById('authInfo');
+    if (infoEl) infoEl.style.display = 'block';
+    startAuthPolling();
+    initApp();
+  } else {
+    authInvalidated = true;
+    if (codeInput) codeInput.focus();
+  }
+
+  document.querySelectorAll('#stepNav a').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!ensureAuth()) return;
+      const step = a.dataset.step;
+      if (step === 'dossier') goToStep('dossier');
+      else {
+        const s = parseInt(step);
+        if (s <= state.currentStep || s === 6) goToStep(s);
+      }
+    });
+  });
+
+  document.getElementById('fulfillMethod').addEventListener('change', function() {
+    if (!ensureAuth()) return;
+    state.fulfillMethod = this.value;
+    const descGroup = document.getElementById('fulfillDescGroup');
+    descGroup.style.display = this.value ? 'block' : 'none';
+  });
+
+  ['disputeFacts','disputeResponsibility','applicationItems','protocolNumber','fulfillDesc','copyCount','committeeName','mediatorName','recorderName','fulfillStart','fulfillEnd'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', function() {
+        if (!ensureAuth()) return;
+        state[id] = this.value;
+        if (id === 'copyCount') state.copyCount = parseInt(this.value) || 3;
+      });
+      el.addEventListener('input', function() {
+        if (!ensureAuth()) return;
+        state[id] = this.value;
+        if (id === 'copyCount') state.copyCount = parseInt(this.value) || 3;
+      });
+    }
+  });
+});
+
+// ===== 生成当事人文本（带标题+下划线格式） =====
+function underline(val) {
+  if (val === null || val === undefined || val === '') return '______';
+  return `<u>${escHtml(val)}</u>`;
+}
+function getPartyText(party) {
+  // 返回逗号分隔的单行HTML（带下划线），与getPartyTextPlain格式一致
+  if (party.isOrg) {
+    let base = `单位名称：${underline(party.name)}，类型：${underline(party.ethnicity)}，法定代表人：${underline(party.occupation)}，成立日期：${underline(party.establishDate)}，住所：${underline(party.address)}，统一社会信用代码：${underline(party.idNumber)}`;
+    if (party.extraInfo && party.extraInfo.trim()) {
+      base += `<br>补充资料：${party.extraInfo.trim() ? '<u>' + escHtml(party.extraInfo.trim()) + '</u>' : '______'}`;
+    }
+    return base;
+  }
+  return `姓名：${underline(party.name)}，性别：${underline(party.gender)}，民族：${underline(party.ethnicity)}，年龄：${underline(party.age)}，身份证号码：${underline(party.idNumber)}，职业或职务：${underline(party.occupation)}，联系方式：${underline(party.phone)}，单位或住址：${underline(party.address)}`;
+}
+// 纯文本版本（用于Word导出等场景）
+function getPartyTextPlain(party) {
+  if (party.isOrg) {
+    let base = `单位名称：${party.name || '______'}，类型：${party.ethnicity || '______'}，法定代表人：${party.occupation || '______'}，成立日期：${party.establishDate || '______'}，住所：${party.address || '______'}，统一社会信用代码：${party.idNumber || '______'}`;
+    if (party.extraInfo && party.extraInfo.trim()) {
+      base += `\n补充资料：${party.extraInfo}`;
+    }
+    return base;
+  }
+  return `姓名：${party.name || '______'}，性别：${party.gender || '______'}，民族：${party.ethnicity || '______'}，年龄：${party.age || '______'}，身份证号码：${party.idNumber || '______'}，职业或职务：${party.occupation || '______'}，联系方式：${party.phone || '______'}，单位或住址：${party.address || '______'}`;
+}
+
+// ===== 协议书预览 =====
+function renderPreview() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  const dateStr = `${year}年${month}月${day}日`;
+
+  const protocolNum = state.protocolNumber ? escHtml(state.protocolNumber) : `×民调字（${year}年）____号`;
+  let html = `<h2>人民调解协议书</h2>`;
+  html += `<div class="doc-number">编号：${protocolNum}</div>`;
+
+  state.parties.forEach(p => {
+    html += `<p class="no-indent party-info-block">当事人：${getPartyText(p)}</p>`;
+  });
+
+  html += `<p>纠纷主要事实、争议事项：<u>${escHtml(state.disputeFacts)}</u></p>`;
+
+  if (state.disputeResponsibility) {
+    html += `<p>各方责任：${escHtml(state.disputeResponsibility)}</p>`;
+  }
+
+  html += `<p>经调解，自愿达成如下协议：<u>${state.clauses.map((c, i) => `${toChineseNum(i + 1)}、${escHtml(c)}`).join('；')}</u>。</p>`;
+
+  let fulfillText = state.fulfillMethod;
+  if (state.fulfillDesc) fulfillText += '：' + state.fulfillDesc;
+  if (state.fulfillStart || state.fulfillEnd) {
+    fulfillText += `（${state.fulfillStart || '___年___月___日'}至${state.fulfillEnd || '___年___月___日'}）`;
+  }
+  html += `<p>履行方式、时限：<u>${escHtml(fulfillText)}</u></p>`;
+
+  html += `<p>本协议一式${state.copyCount}份，当事人、人民调解委员会各持一份。</p>`;
+
+  html += `<div class="signatures">`;
+  state.parties.forEach(p => {
+    html += `<div>当事人（签名盖章或按指印）：______</div>`;
+  });
+  html += `</div>`;
+  html += `<div class="signatures" style="margin-top:16px;">`;
+  html += `<div>人民调解员（签名）：______</div>`;
+  html += `<div>记录人（签名）：______</div>`;
+  html += `</div>`;
+  html += `<div class="seal">（${escHtml(state.committeeName || '______人民调解委员会')}印章）</div>`;
+  html += `<div class="seal">${dateStr}</div>`;
+
+  document.getElementById('previewContent').innerHTML = html;
+}
+
+// ===== 复制文本 =====
+function doPrint() {
+  if (!ensureAuth()) return;
+  window.print();
+}
+
+function copyText() {
+  if (!ensureAuth()) return;
+  const content = document.getElementById('previewContent').innerText;
+  navigator.clipboard.writeText(content).then(() => {
+    showToast('协议书文本已复制到剪贴板', 'success');
+  }).catch(() => {
+    showToast('复制失败，请手动选择文本复制', 'error');
+  });
+}
+
+// ===== Word导出样式 =====
+function getWordStyles() {
+  return `
+    <style>
+      @page { size: A4; margin: 2.54cm 3.18cm 2.54cm 3.18cm; }
+      body {
+        font-family: "SimSun", "宋体", serif;
+        font-size: 16px;
+        line-height: 1.8;
+        color: #000;
+        padding: 0;
+      }
+      h2 {
+        text-align: center;
+        font-size: 22px;
+        font-weight: bold;
+        margin: 0 0 28px 0;
+        letter-spacing: 2px;
+      }
+      .doc-number {
+        text-align: center;
+        margin-bottom: 24px;
+        font-size: 16px;
+      }
+      p {
+        text-indent: 2em;
+        margin: 12px 0;
+        line-height: 1.8;
+      }
+      .no-indent { text-indent: 0; }
+      .clause { margin-left: 2em; text-indent: 0; margin: 6px 0; }
+      .signatures {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 40px;
+        line-height: 2.2;
+      }
+      .signatures div { min-width: 240px; }
+      .seal {
+        text-align: center;
+        margin-top: 28px;
+        line-height: 2.2;
+      }
+      .dossier-note {
+        color: #666;
+        font-size: 14px;
+        margin-top: 16px;
+      }
+      .party-info-block { text-indent: 0; margin: 12px 0; padding-left: 2em; }
+      .party-info-block u { text-decoration: none; border-bottom: 1px solid #000; padding: 0 12px; }
+      .page-break { page-break-after: always; }
+    </style>
+  `;
+}
+
+// ===== 导出Word =====
+function exportWord() {
+  if (!ensureAuth()) return;
+  const content = document.getElementById('previewContent').innerHTML;
+  const styles = getWordStyles();
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">${styles}</head><body>${content}</body></html>`;
+  const blob = new Blob([html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `人民调解协议书_${state.disputeTypeName || '协议书'}.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Word文档导出成功', 'success');
+}
+
+// ===== Toast =====
+function showToast(msg, type) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// ===== 工具函数 =====
+function escHtml(str) {
+  if (!str && str !== 0) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toChineseNum(n) {
+  const nums = ['零','一','二','三','四','五','六','七','八','九','十',
+    '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十'];
+  return nums[n] || String(n);
+}
+
+// ===== 卷宗文书 =====
+const dossierNames = [
+  '人民调解申请书', '人民调解受理登记表', '人民调解调查记录',
+  '人民调解记录', '人民调解协议书', '人民调解口头协议登记表',
+  '人民调解回访记录', '司法确认申请书', '调解卷宗封面', '卷宗情况说明'
+];
+
+const dossierKeys = [
+  'application', 'registration', 'investigation',
+  'mediation', 'agreement', 'oral',
+  'followup', 'judicial', 'cover', 'summary'
+];
+
+function renderDossierTabs() {
+  const container = document.getElementById('dossierTabs');
+  container.innerHTML = dossierNames.map((name, i) => `
+    <div class="dossier-tab ${i === state.currentDossier ? 'active' : ''}" onclick="switchDossier(${i})">${name}</div>
+  `).join('');
+}
+
+function switchDossier(index) {
+  if (!ensureAuth()) return;
+  state.currentDossier = index;
+  renderDossierTabs();
+  renderDossierPreview();
+}
+
+function getPartyShortName(party) {
+  if (party.isOrg) return party.name || '___';
+  return party.name || '___';
+}
+
+function getPartiesString() {
+  return state.parties.map(p => getPartyShortName(p)).join('与');
+}
+
+function renderDossierPreview() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const dateStr = `${year}年${now.getMonth()+1}月${now.getDate()}日`;
+  let html = '';
+
+  switch (state.currentDossier) {
+    case 0: // 申请书
+      html = renderApplication(dateStr);
+      break;
+    case 1: // 受理登记表
+      html = renderRegistration(dateStr);
+      break;
+    case 2: // 调查记录
+      html = renderInvestigation(dateStr);
+      break;
+    case 3: // 调解记录
+      html = renderMediationRecord(dateStr);
+      break;
+    case 4: // 协议书（复用预览）
+      renderPreview();
+      document.getElementById('dossierPreview').innerHTML = document.getElementById('previewContent').innerHTML;
+      return;
+    case 5: // 口头协议登记表
+      html = renderOralAgreement(dateStr);
+      break;
+    case 6: // 回访记录
+      html = renderFollowup(dateStr);
+      break;
+    case 7: // 司法确认
+      html = renderJudicialConfirm(dateStr);
+      break;
+    case 8: // 卷宗封面
+      html = renderCover(dateStr);
+      break;
+    case 9: // 卷宗情况说明
+      html = renderSummary();
+      break;
+  }
+
+  document.getElementById('dossierPreview').innerHTML = html;
+}
+
+function renderApplication(dateStr) {
+  const app = state.parties.find(p => p.type === 'applicant') || state.parties[0];
+  const res = state.parties.find(p => p.type === 'respondent') || (state.parties[1] || state.parties[0]);
+  let html = `<h2>人民调解申请书</h2>`;
+  html += `<p class="no-indent party-info-block">申请人：${getPartyText(app)}</p>`;
+  html += `<p class="no-indent party-info-block">被申请人：${getPartyText(res)}</p>`;
+  html += `<p>纠纷简要情况：<u>${escHtml(state.disputeFacts)}</u></p>`;
+  html += `<p>当事人申请事项：</p>`;
+  if (state.applicationItems && state.applicationItems.trim()) {
+    const items = state.applicationItems.trim().split('\n').filter(line => line.trim());
+    items.forEach(line => {
+      html += `<p class="clause"><u>${escHtml(line.trim())}</u></p>`;
+    });
+  } else {
+    html += `<p class="clause"><u>______</u></p>`;
+  }
+  html += `<p>人民调解委员会已将申请人民调解的相关规定告知我，现自愿申请人民调解委员会进行调解。</p>`;
+  html += `<p class="no-indent">申请人（签名盖章或按指印）：______</p>`;
+  html += `<p class="no-indent">${dateStr}</p>`;
+  return html;
+}
+
+function renderRegistration(dateStr) {
+  let html = `<h2>人民调解受理登记表</h2>`;
+  const partyNames = state.parties.map(p => underline(getPartyShortName(p))).join('与');
+  html += `<p>${dateStr}，人民调解委员会依当事人申请/主动调解，经当事人同意，调解（${partyNames}）之间的纠纷。</p>`;
+  html += `<p class="no-indent">纠纷类型：${state.disputeTypeName || '______'}</p>`;
+  html += `<p class="no-indent">案件来源：□①当事人申请  □②人民调解委员会主动调解</p>`;
+  html += `<p>纠纷简要情况：<u>${escHtml(state.disputeFacts)}</u></p>`;
+  html += `<p class="no-indent">当事人（签名）：______    ______</p>`;
+  html += `<p class="no-indent">登记人（签名）：______</p>`;
+  html += `<p class="no-indent">${escHtml(state.committeeName || '______人民调解委员会')}</p>`;
+  html += `<p class="no-indent">${dateStr}</p>`;
+  html += `<p class="no-indent dossier-note">备注：此表由人民调解委员会填写</p>`;
+  return html;
+}
+
+function renderInvestigation(dateStr) {
+  const app = state.parties.find(p => p.type === 'applicant') || state.parties[0];
+  let html = `<h2>人民调解调查记录</h2>`;
+  html += `<p class="no-indent">时间：${dateStr}</p>`;
+  html += `<p class="no-indent">地点：<u>立新派出所调解室</u></p>`;
+  html += `<p class="no-indent">参加人：______</p>`;
+  const investigatedNames = state.parties.slice(0, 2).map(p => underline(getPartyShortName(p))).join('、');
+  html += `<p class="no-indent">被调查人：${investigatedNames}</p>`;
+  html += `<p>记录：我是${escHtml(state.committeeName || '______')}人民调解委员会的调解员${escHtml(state.mediatorName || '______')}，受${escHtml(getPartyShortName(app))}的申请，来调解${getPartiesString()}之间的纠纷，现依法对你展开调查。根据《中华人民共和国人民调解法》第23条、第24条之规定，你享有下列权利：（1）选择或者接受人民调解员；（2）接受调解、拒绝调解或者要求终止调解；（3）要求调解公开进行或者不公开进行；（4）自主表达意愿、自愿达成调解协议。</p>`;
+  html += `<p>同时，你要履行下列义务：（1）如实陈述纠纷事实；（2）遵守调解现场秩序，尊重人民调解员；（3）尊重对方当事人行使权利。</p>`;
+  html += `<p>[调查内容]</p>`;
+  html += `<p><u>${escHtml(state.disputeFacts)}</u></p>`;
+  html += `<p class="no-indent">被调查人（签名）：______</p>`;
+  html += `<p class="no-indent">调查人（签名）：______  ______</p>`;
+  html += `<p class="no-indent">记录人（签名）：______</p>`;
+  return html;
+}
+
+function renderMediationRecord(dateStr) {
+  let html = `<h2>人民调解记录</h2>`;
+  html += `<p class="no-indent">时间：${dateStr}</p>`;
+  html += `<p class="no-indent">地点：<u>立新派出所调解室</u></p>`;
+  const partyNames = state.parties.slice(0, 2).map(p => underline(getPartyShortName(p))).join('、');
+  html += `<p class="no-indent">当事人：${partyNames}</p>`;
+  html += `<p class="no-indent">参加人：______</p>`;
+  html += `<p>人民调解委员会已将人民调解的相关规定告知各方当事人。</p>`;
+  html += `<p>调解记录：[调解过程记录]</p>`;
+  html += `<p><u>${escHtml(state.disputeFacts)}</u></p>`;
+  html += `<p>经调解，双方达成以下协议：<u>${state.clauses.map((c, i) => `${toChineseNum(i+1)}、${escHtml(c)}`).join('；')}</u>。</p>`;
+  html += `<p class="no-indent">调解结果：</p>`;
+  html += `<p class="no-indent">□1.调解成功  □2.调解不成  □3.有待继续调解</p>`;
+  html += `<div class="signatures">`;
+  state.parties.forEach(p => {
+    html += `<div>当事人（签名盖章或按指印）：______</div>`;
+  });
+  html += `</div>`;
+  html += `<p class="no-indent">人民调解员（签名）：______</p>`;
+  html += `<p class="no-indent">记录人（签名）：______</p>`;
+  html += `<p class="no-indent">${dateStr}</p>`;
+  return html;
+}
+
+function renderOralAgreement(dateStr) {
+  const year = new Date().getFullYear();
+  const pn = state.protocolNumber ? escHtml(state.protocolNumber) : `×民调字（${year}年）____号`;
+  let html = `<h2>人民调解口头协议登记表</h2>`;
+  html += `<div class="doc-number">编号：${pn}</div>`;
+  state.parties.forEach(p => {
+    html += `<p class="no-indent party-info-block">当事人：${getPartyText(p)}</p>`;
+  });
+  html += `<p>纠纷主要事实、争议事项：${escHtml(state.disputeFacts)}</p>`;
+  html += `<p>经调解，自愿达成如下协议：${state.clauses.map(c => escHtml(c)).join('；')}</p>`;
+  html += `<p class="no-indent">履行方式、时限：${escHtml(state.fulfillMethod + '：' + state.fulfillDesc)}</p>`;
+  html += `<p class="no-indent">人民调解员（签名）：______</p>`;
+  html += `<div class="seal">（${escHtml(state.committeeName || '______人民调解委员会')}印章）</div>`;
+  html += `<div class="seal">${dateStr}</div>`;
+  html += `<p class="no-indent dossier-note">备注：此表由人民调解委员会填写</p>`;
+  return html;
+}
+
+function renderFollowup(dateStr) {
+  let html = `<h2>人民调解回访记录</h2>`;
+  html += `<p class="no-indent">当事人：${getPartiesString()}</p>`;
+  const year = new Date().getFullYear();
+  const pn = state.protocolNumber ? escHtml(state.protocolNumber) : `×民调字（${year}年）____号`;
+  html += `<p class="no-indent">调解协议编号：${pn}</p>`;
+  html += `<p class="no-indent">回访事由：${getPartiesString()}之间${state.disputeTypeName || '______'}纠纷调解协议履行情况</p>`;
+  html += `<p class="no-indent">回访时间：${dateStr}</p>`;
+  html += `<p>回访情况：调解协议达成后，履行情况______。当事人对人民调解委员会的工作______。</p>`;
+  html += `<p class="no-indent">回访人（签名）：______</p>`;
+  html += `<p class="no-indent">${escHtml(state.committeeName || '______人民调解委员会')}</p>`;
+  html += `<p class="no-indent">${dateStr}</p>`;
+  return html;
+}
+
+function renderJudicialConfirm(dateStr) {
+  const app = state.parties.find(p => p.type === 'applicant') || state.parties[0];
+  const res = state.parties.find(p => p.type === 'respondent') || (state.parties[1] || state.parties[0]);
+  const year = new Date().getFullYear();
+  const pn = state.protocolNumber ? escHtml(state.protocolNumber) : `×民调字（${year}年）____号`;
+  let html = `<h2>司法确认申请书</h2>`;
+  html += `<p class="no-indent party-info-block">申请人：${getPartyText(app)}</p>`;
+  html += `<p class="no-indent party-info-block">被申请人：${getPartyText(res)}</p>`;
+  html += `<p>请求事项：</p>`;
+  html += `<p>请求人民法院依法确认${escHtml(state.committeeName || '______')}人民调解委员会于${dateStr}主持调解达成的编号为${pn}的调解协议书的效力。</p>`;
+  html += `<p>事实与理由：</p>`;
+  html += `<p>申请人${escHtml(getPartyShortName(app))}与被申请人${escHtml(getPartyShortName(res))}因${escHtml(state.disputeTypeName || '______')}纠纷，于${dateStr}经${escHtml(state.committeeName || '______')}人民调解委员会主持调解，达成了编号为${pn}的调解协议书。现双方当事人自愿申请贵院依法确认该调解协议的效力。</p>`;
+  html += `<p class="no-indent">此致</p>`;
+  html += `<p class="no-indent">______人民法院</p>`;
+  html += `<div class="signatures">`;
+  html += `<div>申请人（签名）：______</div>`;
+  html += `<div>被申请人（签名）：______</div>`;
+  html += `</div>`;
+  html += `<p class="no-indent">${dateStr}</p>`;
+  return html;
+}
+
+function renderCover(dateStr) {
+  let html = `<h2>${escHtml(state.committeeName || '______人民调解委员会')}</h2>`;
+  html += `<h2 style="font-size:26px;">调解卷宗</h2>`;
+  html += `<p class="no-indent">卷名：${getPartiesString()}之间${state.disputeTypeName || '______'}纠纷</p>`;
+  html += `<p class="no-indent">卷号：______</p>`;
+  html += `<p class="no-indent">人民调解员：______    调解日期：${dateStr}</p>`;
+  html += `<p class="no-indent">立卷人：______        立卷日期：${dateStr}</p>`;
+  html += `<p class="no-indent">保管期限：______</p>`;
+  html += `<p class="no-indent">备注：______</p>`;
+  return html;
+}
+
+function renderSummary() {
+  let html = `<h2>卷宗情况说明</h2>`;
+  html += `<p>本卷宗人民调解申请书1份，人民调解受理登记表1份，人民调解调查记录1份，人民调解证据材料____份，人民调解记录1份，人民调解协议书1份，人民调解回访记录1份，司法确认有关材料____份。</p>`;
+  html += `<p>本案当事人${state.parties.length}人，调解经济金额____元。</p>`;
+  html += `<p class="no-indent">立卷人：______</p>`;
+  return html;
+}
+
+// ===== 卷宗操作 =====
+function copyDossierText() {
+  if (!ensureAuth()) return;
+  const content = document.getElementById('dossierPreview').innerText;
+  navigator.clipboard.writeText(content).then(() => {
+    showToast('当前文书已复制到剪贴板', 'success');
+  }).catch(() => {
+    showToast('复制失败，请手动选择文本复制', 'error');
+  });
+}
+
+function printDossier() {
+  if (!ensureAuth()) return;
+  const content = document.getElementById('dossierPreview').innerHTML;
+  const origPreview = document.getElementById('previewContent').innerHTML;
+  document.getElementById('previewContent').innerHTML = content;
+  window.print();
+  document.getElementById('previewContent').innerHTML = origPreview;
+}
+
+function exportAllDossier() {
+  if (!ensureAuth()) return;
+  const allContent = [];
+  dossierKeys.forEach((key, i) => {
+    const orig = state.currentDossier;
+    state.currentDossier = i;
+    renderDossierPreview();
+    allContent.push({
+      name: dossierNames[i],
+      html: document.getElementById('dossierPreview').innerHTML
+    });
+    state.currentDossier = orig;
+  });
+  renderDossierPreview();
+
+  const styles = getWordStyles();
+
+  let html = '<!DOCTYPE html><html><head><meta charset="UTF-8">' + styles + '</head><body>';
+  allContent.forEach((doc, i) => {
+    html += doc.html;
+    if (i < allContent.length - 1) html += '<div class="page-break"></div>';
+  });
+  html += '</body></html>';
+
+  const blob = new Blob([html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `人民调解卷宗_${state.disputeTypeName || '全套'}.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('全套卷宗文档导出成功', 'success');
+}
+</script>
+</body>
+</html>
