@@ -79,7 +79,7 @@
 ```
 ├── README.md
 ├── 方案一启动码/                     # 启动密码方案
-│   ├── 人民调解协议生成器启动码v5.5.html
+│   ├── 人民调解协议生成器启动码v5.5.1.html
 │   └── 人民调解协议生成器v5.1_方案一.html
 ├── 方案二授权码/                     # 授权码+设备绑定方案（当前主推）
 │   ├── 人民调解协议生成器v6.0_方案二_设备绑定.html
@@ -122,7 +122,7 @@
 - 修复「导出失败：Failed to construct 'DecompressionStream': Unsupported compression format: 'deflate-raw'」
 - 原因：Chromium 80~102 内核（部分国产双核浏览器、微信内置浏览器、旧版 Edge 等）有 DecompressionStream API，但不支持 `deflate-raw` 压缩格式（Chromium 103+ 才支持），导致卷宗标准封面、调解记录表、治安调解申请书/协议书等所有「原 docx 格式」导出失败
 - 修复方案：启动时自动检测 `deflate-raw` 支持情况——新内核（Chrome/Edge ≥ 103）仍走原生 API 行为不变；不支持的浏览器自动回退到页面内嵌的纯 JS deflate 解压/压缩实现（puff 算法），无需更换浏览器即可正常导出
-- 兼容性说明：兜底路径经过 Node zlib 交叉验证与 .NET zip 独立解包验证，导出的 docx 完全合法；文件名保持 v5.5 不变，内容为 v5.5.1
+- 兼容性说明：兜底路径经过 Node zlib 交叉验证与 .NET zip 独立解包验证，导出的 docx 完全合法；文件已更名为 `人民调解协议生成器启动码v5.5.1.html`
 
 ### v5.5 — 2026-08-11
 
