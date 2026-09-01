@@ -1495,7 +1495,7 @@ function goToStep(step) {
   }
   if (step === 'dossier') renderDossierPreview();
   if (step === 'personalDossier') { renderPersonalDossierTabs(); switchPersonalDossier(0); }
-  if (step === 'mediationRecord') renderMediationRecord();
+  if (step === 'mediationRecord') renderMediationRecordModule();
 }
 
 function nextStep() {
@@ -3738,7 +3738,7 @@ function renderMediationRecordPreview() {
   document.getElementById('mediationRecordPreview').innerHTML = renderPersonalMediationRecord();
 }
 
-function renderMediationRecord() {
+function renderMediationRecordModule() {
   renderMediationRecordExtraFields();
   renderMediationRecordPreview();
 }
