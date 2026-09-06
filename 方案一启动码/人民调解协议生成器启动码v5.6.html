@@ -430,6 +430,7 @@
     <!-- Step 3: 纠纷事实 -->
     <div class="content-card step-panel hidden" id="step3">
       <h2 class="section-title">📄 纠纷事实与争议事项</h2>
+      <p class="section-desc" id="casePartyNamesLine" style="font-size:15px;font-weight:600;color:#0f172a;">本案当事人：<span style="color:#94a3b8;font-weight:400;">（尚未填写，请先在第 2 步填写当事人信息）</span></p>
       <p class="section-desc">请详细描述本次纠纷的基本情况。带 <span class="required" style="color:var(--danger)">*</span> 为必填项</p>
       <div class="form-group">
         <label class="form-label">纠纷主要事实、争议事项 <span class="required">*</span></label>
@@ -1487,6 +1488,16 @@ function goToStep(step) {
   if (step === 5) {
     const cmtInput = document.getElementById('committeeName');
     if (cmtInput && !cmtInput.value) cmtInput.value = state.committeeName;
+    // v5.6：履行起始/截止日期默认为当天（保留用户已填或已保存的值）
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    ['fulfillStart', 'fulfillEnd'].forEach(id => {
+      if (!state[id]) {
+        state[id] = todayStr;
+        const el = document.getElementById(id);
+        if (el) el.value = todayStr;
+      }
+    });
   }
   if (step === 6) {
     toggleDisputeSpecificUI();
@@ -1496,6 +1507,17 @@ function goToStep(step) {
   if (step === 'dossier') renderDossierPreview();
   if (step === 'personalDossier') { renderPersonalDossierTabs(); switchPersonalDossier(0); }
   if (step === 'mediationRecord') renderMediationRecordModule();
+  if (step === 3) updateCasePartyNamesLine();
+}
+
+// v5.6：纠纷事实页标题处展示本案当事人姓名（列举全部已填写的当事人）
+function updateCasePartyNamesLine() {
+  const el = document.getElementById('casePartyNamesLine');
+  if (!el) return;
+  const names = (state.parties || []).map(p => (p.name || '').trim()).filter(Boolean);
+  el.innerHTML = names.length
+    ? '本案当事人：' + names.map(n => escHtml(n)).join('、')
+    : '本案当事人：<span style="color:#94a3b8;font-weight:400;">（尚未填写，请先在第 2 步填写当事人信息）</span>';
 }
 
 function nextStep() {
@@ -2051,10 +2073,10 @@ function renderReceipt(dateStr) {
   html += `<td width="349" valign="center" colspan="2" style="width:261.8pt;padding:0 5.4pt;border:1pt solid windowtext;border-top:none;text-align:center;"><span style="font-family:仿宋_GB2312;font-size:16pt;white-space:nowrap;">${protocolNum}</span></td>`;
   html += `</tr>`;
 
-  // 行4: 送达人 | 梁建荣 | 送达方式 | 当面送达（4列独立）
+  // 行4: 送达人 | 调解员姓名（联动第5步履行信息，未填时用默认） | 送达方式 | 当面送达（4列独立）
   html += `<tr style="height:44.2pt;">`;
   html += `<td width="101" valign="center" style="width:76.4pt;padding:0 5.4pt;border:1pt solid windowtext;border-top:none;text-align:center;"><span style="font-family:仿宋_GB2312;font-size:16pt;">送达人</span></td>`;
-  html += `<td width="109" valign="center" style="width:81.75pt;padding:0 5.4pt;border:1pt solid windowtext;border-top:none;"><span style="font-family:仿宋_GB2312;font-size:16pt;">梁建荣</span></td>`;
+  html += `<td width="109" valign="center" style="width:81.75pt;padding:0 5.4pt;border:1pt solid windowtext;border-top:none;"><span style="font-family:仿宋_GB2312;font-size:16pt;">${escHtml(state.mediatorName || '梁建荣')}</span></td>`;
   html += `<td width="119" valign="center" style="width:89.5pt;padding:0 5.4pt;border:1pt solid windowtext;text-align:center;"><span style="font-family:仿宋_GB2312;font-size:16pt;">送达方式</span></td>`;
   html += `<td width="229" valign="center" style="width:172.3pt;padding:0 5.4pt;border:1pt solid windowtext;text-align:center;"><span style="font-family:仿宋_GB2312;font-size:16pt;">当面送达</span></td>`;
   html += `</tr>`;
