@@ -1090,7 +1090,8 @@ function renderParties() {
         </div>
         <div class="form-group">
           <label class="form-label">统一社会信用代码</label>
-          <input type="text" class="form-input" value="${escHtml(p.idNumber || '')}" onchange="updateParty(${p.id},'idNumber',this.value)" placeholder="如：91110000XXXXXXXXXX">
+          <input type="text" class="form-input" data-cert="1" value="${escHtml(p.idNumber || '')}" onchange="updateParty(${p.id},'idNumber',this.value)" placeholder="如：91110000XXXXXXXXXX">
+          <p class="form-hint cert-hint" style="margin:4px 0 0;font-size:12px;">${certHintHtml(p.idNumber, p.isOrg)}</p>
         </div>
       </div>
       <div class="form-group" style="margin-top:8px;">
@@ -1127,13 +1128,14 @@ function renderParties() {
         </div>
         <div class="form-group">
           <label class="form-label">身份证号码</label>
-          <input type="text" class="form-input" value="${escHtml(p.idNumber || '')}" onchange="updateParty(${p.id},'idNumber',this.value)" placeholder="如：110101199001011234">
+          <input type="text" class="form-input" data-cert="1" value="${escHtml(p.idNumber || '')}" onchange="updateParty(${p.id},'idNumber',this.value)" placeholder="如：110101199001011234">
+          <p class="form-hint cert-hint" style="margin:4px 0 0;font-size:12px;">${certHintHtml(p.idNumber, p.isOrg)}</p>
         </div>
         <div class="form-group">
           <label class="form-label">联系方式</label>
           <input type="text" class="form-input" value="${escHtml(p.phone)}" onchange="updateParty(${p.id},'phone',this.value)" placeholder="电话/手机">
         </div>
-        <p class="form-hint" style="grid-column:1/-1;">出生日期、年龄会根据身份证号码自动计算，也可手动选择出生日期</p>
+        <p class="form-hint" style="grid-column:1/-1;">出生日期、年龄、性别会根据身份证号码自动计算带出，也可手动修改</p>
         ` : `
         <div class="form-group">
           <label class="form-label">年龄</label>
@@ -1141,7 +1143,8 @@ function renderParties() {
         </div>
         <div class="form-group">
           <label class="form-label">身份证号码</label>
-          <input type="text" class="form-input" value="${escHtml(p.idNumber || '')}" onchange="updateParty(${p.id},'idNumber',this.value)" placeholder="如：110101199001011234">
+          <input type="text" class="form-input" data-cert="1" value="${escHtml(p.idNumber || '')}" onchange="updateParty(${p.id},'idNumber',this.value)" placeholder="如：110101199001011234">
+          <p class="form-hint cert-hint" style="margin:4px 0 0;font-size:12px;">${certHintHtml(p.idNumber, p.isOrg)}</p>
         </div>
         <div class="form-group">
           <label class="form-label">职业或职务</label>
@@ -1169,20 +1172,36 @@ function updateParty(id, field, value) {
   if (!party) return;
   party[field] = value;
   const partyEl = document.querySelector(`.party-card[data-id="${id}"]`);
-  // 当修改身份证号码时，自动计算出生日期和年龄
-  if (field === 'idNumber' && !party.isOrg && value && value.length === 18) {
-    const birthStr = value.substring(6, 14);
-    const birthYear = parseInt(birthStr.substring(0, 4));
-    const birthMonth = parseInt(birthStr.substring(4, 6));
-    const birthDay = parseInt(birthStr.substring(6, 8));
-    if (birthYear >= 1900 && birthMonth >= 1 && birthMonth <= 12 && birthDay >= 1 && birthDay <= 31) {
-      party.birthDate = `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
-      party.age = computeAgeFromBirth(party.birthDate);
-      if (partyEl) {
-        const birthInput = partyEl.querySelector('input[type="date"]');
-        if (birthInput) birthInput.value = party.birthDate;
-        const ageInput = partyEl.querySelector('input[type="number"]');
-        if (ageInput) ageInput.value = party.age;
+  // v5.7：证件号码即时校验 + 自动带出出生日期/年龄/性别
+  if (field === 'idNumber') {
+    const normalized = normalizeIdNumberInput(value);
+    if (normalized !== value) { party.idNumber = normalized; value = normalized; }
+    const idInput = partyEl ? partyEl.querySelector('input[data-cert="1"]') : null;
+    if (idInput && idInput.value !== value) idInput.value = value;
+    const hint = partyEl ? partyEl.querySelector('.cert-hint') : null;
+    if (hint) {
+      if (!value) { hint.textContent = ''; if (idInput) idInput.style.borderColor = ''; }
+      else {
+        const rv = validateCertificateNumber(value, party.isOrg);
+        applyCertHint(hint, rv);
+        if (idInput) idInput.style.borderColor = rv.ok ? (rv.warn ? '#d97706' : '#16a34a') : '#dc2626';
+      }
+    }
+    if (!party.isOrg && value.length === 18) {
+      const rv = validateIdNumber18(value);
+      if (rv.ok && !rv.warn) {
+        const birthStr = value.substring(6, 14);
+        party.birthDate = `${birthStr.substring(0, 4)}-${birthStr.substring(4, 6)}-${birthStr.substring(6, 8)}`;
+        party.age = computeAgeFromBirth(party.birthDate);
+        if (!party.gender) party.gender = (parseInt(value[16], 10) % 2 === 1) ? '男' : '女';
+        if (partyEl) {
+          const birthInput = partyEl.querySelector('input[type="date"]');
+          if (birthInput) birthInput.value = party.birthDate;
+          const ageInput = partyEl.querySelector('input[type="number"]');
+          if (ageInput) ageInput.value = party.age;
+          const genderSel = Array.from(partyEl.querySelectorAll('select')).find(s => s.querySelector('option[value="男"]'));
+          if (genderSel && party.gender) genderSel.value = party.gender;
+        }
       }
     }
   }
@@ -1207,6 +1226,100 @@ function computeAgeFromBirth(birthDateStr) {
     age--;
   }
   return age;
+}
+
+// ===== v5.7 证件号码校验（身份证 GB 11643-1999 / 统一社会信用代码 GB 32100-2015）=====
+const ID_PROVINCE_CODES = ['11','12','13','14','15','21','22','23','31','32','33','34','35','36','37','41','42','43','44','45','46','50','51','52','53','54','61','62','63','64','65','71','81','82'];
+const ID_WEIGHTS = [7,9,10,5,8,4,2,1,6,3,7,9,10,5,8,4,2];
+const ID_CHECK_MAP = ['1','0','X','9','8','7','6','5','4','3','2'];
+
+function normalizeIdNumberInput(raw) {
+  return String(raw || '').replace(/\s+/g, '').toUpperCase();
+}
+
+function validateIdNumber18(raw) {
+  const id = normalizeIdNumberInput(raw);
+  if (!id) return { ok: false, msg: '号码为空' };
+  if (/^\d{15}$/.test(id)) return { ok: true, warn: true, msg: '15位老式身份证号，建议核对后换领18位新证' };
+  if (!/^\d{17}[\dX]$/.test(id)) return { ok: false, msg: '应为18位：前17位数字 + 第18位数字或X' };
+  if (ID_PROVINCE_CODES.indexOf(id.substring(0, 2)) < 0) return { ok: false, msg: `前两位「${id.substring(0, 2)}」不是合法省份代码` };
+  const y = parseInt(id.substring(6, 10), 10);
+  const mth = parseInt(id.substring(10, 12), 10);
+  const d = parseInt(id.substring(12, 14), 10);
+  const birth = new Date(y, mth - 1, d);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  if (y < 1900 || mth < 1 || mth > 12 || d < 1 || birth.getFullYear() !== y || birth.getMonth() !== mth - 1 || birth.getDate() !== d) {
+    return { ok: false, msg: `出生日期段「${id.substring(6, 14)}」不是有效日期` };
+  }
+  if (birth > today) return { ok: false, msg: '出生日期晚于今天' };
+  let sum = 0;
+  for (let i = 0; i < 17; i++) sum += parseInt(id[i], 10) * ID_WEIGHTS[i];
+  const expect = ID_CHECK_MAP[sum % 11];
+  if (id[17] !== expect) return { ok: false, msg: `校验位不符：第18位应为「${expect}」，实际为「${id[17]}」` };
+  return { ok: true, msg: '✓ 校验通过' };
+}
+
+const USCC_CHARS = '0123456789ABCDEFGHJKLMNPQRTUWXY';
+const USCC_WEIGHTS = [1,3,9,27,19,26,16,17,20,29,25,13,8,24,10,30,28];
+function validateUscc(raw) {
+  const code = normalizeIdNumberInput(raw);
+  if (!code) return { ok: false, msg: '号码为空' };
+  if (code.length !== 18) return { ok: false, msg: '统一社会信用代码应为18位' };
+  if (!/^[0-9A-HJ-NPQRTUWXY]{2}\d{6}[0-9A-HJ-NPQRTUWXY]{10}$/.test(code)) return { ok: false, msg: '含非法字符（不应含 I、O、S、V、Z）或结构不正确' };
+  let sum = 0;
+  for (let i = 0; i < 17; i++) sum += USCC_CHARS.indexOf(code[i]) * USCC_WEIGHTS[i];
+  const expect = USCC_CHARS[(31 - (sum % 31)) % 31];
+  if (code[17] !== expect) return { ok: false, msg: `校验位不符：第18位应为「${expect}」` };
+  return { ok: true, msg: '✓ 校验通过' };
+}
+
+function validateCertificateNumber(value, isOrg) {
+  return isOrg ? validateUscc(value) : validateIdNumber18(value);
+}
+
+function applyCertHint(el, result) {
+  if (!el) return;
+  el.textContent = result.msg;
+  el.style.color = result.ok ? (result.warn ? '#d97706' : '#16a34a') : '#dc2626';
+}
+
+function certHintHtml(value, isOrg) {
+  if (!value || !String(value).trim()) return '';
+  const r = validateCertificateNumber(value, isOrg);
+  const color = r.ok ? (r.warn ? '#d97706' : '#16a34a') : '#dc2626';
+  return `<span style="color:${color};">${escHtml(r.msg)}</span>`;
+}
+
+// 个人卷宗模块中的身份证号码字段（用于即时校验与导出前软校验）
+const CERT_ID_FIELDS = {
+  'pd_receipt_receiver_id': '收据-收款人',
+  'pd_forgive_id1': '谅解书-甲方',
+  'pd_forgive_id2': '谅解书-乙方',
+  'pd_record_app_id': '登记单-甲方',
+  'pd_record_res_id': '登记单-乙方'
+};
+
+// 下一步/导出前的软校验：收集未通过的证件号码，弹确认框（可继续）
+function collectCertWarnings() {
+  const warns = [];
+  (state.parties || []).forEach(p => {
+    if (!p.idNumber || !String(p.idNumber).trim()) return;
+    const r = validateCertificateNumber(p.idNumber, p.isOrg);
+    if (!r.ok) warns.push(`${p.isOrg ? '单位' : '当事人'}「${p.name || '未命名'}」证件号码：${r.msg}`);
+  });
+  Object.keys(CERT_ID_FIELDS).forEach(fid => {
+    const v = state.personalDossierFields[fid];
+    if (!v || !String(v).trim()) return;
+    const r = validateIdNumber18(v);
+    if (!r.ok) warns.push(`${CERT_ID_FIELDS[fid]}身份证号码：${r.msg}`);
+  });
+  return warns;
+}
+
+function confirmCertWarnings() {
+  const warns = collectCertWarnings();
+  if (!warns.length) return true;
+  return confirm('以下证件号码未通过校验：\n\n· ' + warns.join('\n· ') + '\n\n仍要继续吗？\n（确定 = 继续；取消 = 返回修改）');
 }
 
 function updatePartyType(id, value) {
@@ -1529,6 +1642,7 @@ function nextStep() {
   } else if (state.currentStep === 2) {
     const valid = state.parties.every(p => p.name.trim());
     if (!valid) { showToast('请填写所有当事人的姓名/名称', 'error'); return; }
+    if (!confirmCertWarnings()) return;
     goToStep(3);
   } else if (state.currentStep === 3) {
     if (!state.disputeFacts.trim()) { showToast('请填写纠纷主要事实、争议事项', 'error'); return; }
@@ -2189,6 +2303,7 @@ function printDossier() {
 }
 
 function exportAllDossier() {
+  if (!confirmCertWarnings()) return;
   const allContent = [];
   dossierKeys.forEach((key, i) => {
     const orig = state.currentDossier;
@@ -3056,6 +3171,7 @@ async function buildFilledMediationRecordDocx() {
 }
 
 async function exportMediationRecordDocx() {
+  if (!confirmCertWarnings()) return;
   try {
     showToast('正在生成调解记录表 docx…', 'success');
     const outU8 = await buildFilledMediationRecordDocx();
@@ -3139,6 +3255,18 @@ function getPersonalDossierFieldValue(fieldId) {
 }
 
 function setPersonalDossierFieldValue(fieldId, value) {
+  // v5.7：身份证号码字段自动规范化 + 即时校验提示
+  if (CERT_ID_FIELDS[fieldId]) {
+    value = normalizeIdNumberInput(value);
+    const input = document.getElementById(fieldId);
+    if (input && input.value !== value) input.value = value;
+    const hint = document.querySelector(`.cert-hint[data-certfield="${fieldId}"]`);
+    const r = validateIdNumber18(value);
+    if (hint) {
+      if (!value) { hint.textContent = ''; } else applyCertHint(hint, r);
+    }
+    if (input) input.style.borderColor = value ? (r.ok ? (r.warn ? '#d97706' : '#16a34a') : '#dc2626') : '';
+  }
   state.personalDossierFields[fieldId] = value;
 }
 
@@ -3250,6 +3378,7 @@ function renderPersonalDossierExtraFields() {
       html += `<div class="form-group" style="margin-bottom:0;">
       <label class="form-label" style="font-size:13px;">${escHtml(f.label)}</label>
       <input type="text" class="form-input" id="${f.id}" value="${escHtml(val)}" placeholder="${escHtml(f.placeholder)}" onchange="setPersonalDossierFieldValue('${f.id}',this.value)" oninput="setPersonalDossierFieldValue('${f.id}',this.value);renderPersonalDossierPreview();" style="font-size:13px;padding:6px 10px;">
+      ${CERT_ID_FIELDS[f.id] ? `<p class="form-hint cert-hint" data-certfield="${f.id}" style="margin:4px 0 0;font-size:12px;">${certHintHtml(val, false)}</p>` : ''}
     </div>`;
     }
   });
@@ -3692,6 +3821,7 @@ function renderMediationRecordExtraFields() {
       html += `<div class="form-group" style="margin-bottom:0;${f.full ? 'grid-column:1/-1;' : ''}">
       <label class="form-label" style="font-size:13px;">${escHtml(f.label)}</label>
       <input type="text" class="form-input" id="${f.id}" value="${escHtml(val)}" placeholder="${escHtml(f.placeholder)}" onchange="setPersonalDossierFieldValue('${f.id}',this.value)" oninput="setPersonalDossierFieldValue('${f.id}',this.value);renderMediationRecordPreview();" style="font-size:13px;padding:6px 10px;">
+      ${CERT_ID_FIELDS[f.id] ? `<p class="form-hint cert-hint" data-certfield="${f.id}" style="margin:4px 0 0;font-size:12px;">${certHintHtml(val, false)}</p>` : ''}
     </div>`;
     }
   });
@@ -3961,6 +4091,7 @@ async function buildFilledSecurityDocx(kind) {
 }
 
 async function exportSecurityDocDocx() {
+  if (!confirmCertWarnings()) return;
   const kind = state.securityDossierIndex === 0 ? 'application' : 'agreement';
   const docName = kind === 'application' ? '治安调解申请书' : '治安调解协议书';
   try {
@@ -4109,6 +4240,7 @@ function printPersonalDossier() {
 }
 
 function exportAllPersonalDossier() {
+  if (!confirmCertWarnings()) return;
   // 封面已单独用「导出封面(原docx格式)」导出，批量导出跳过第 0 项封面
   const allContent = [];
   const orig = state.currentPersonalDossier;
